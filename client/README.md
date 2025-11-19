@@ -1,16 +1,48 @@
-# React + Vite
+# NexusVault Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  <img src="public/nexusvault-logo.svg" alt="NexusVault Logo" width="150" height="150" />
+</p>
 
-Currently, two official plugins are available:
+The frontend application for **NexusVault**, a modern web-based SSH client. Built with React, Vite, and Tailwind CSS.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Tech Stack
 
-## React Compiler
+- **Core**: React, Vite
+- **Styling**: Tailwind CSS, Shadcn UI, Framer Motion
+- **Terminal**: xterm.js, xterm-addon-fit, xterm-addon-web-links
+- **State Management**: React Hooks
+- **Icons**: React Icons
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Development
 
-## Expanding the ESLint configuration
+To run the client in development mode (usually run via the root `npm run dev` command, but can be run independently if the backend is already running):
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`.
+
+## 📦 Build
+
+To build the client for production:
+
+```bash
+npm run build
+```
+
+The build artifacts will be stored in the `dist/` directory.
+
+## 🧩 Key Components
+
+- **Terminal**: A fully functional SSH terminal using xterm.js.
+- **Session Manager**: Manage multiple active SSH sessions.
+- **Connection Form**: Securely input SSH credentials.
+- **Dashboard**: Overview of active sessions and saved connections.
+
+## 📄 License
+
+ISC
+

@@ -112,21 +112,21 @@ function SessionCard({ session, onClick, previewMode }) {
                 <div className="absolute inset-0 overflow-hidden">
                     {showLivePreview ? (
                         <div className="w-[200%] h-[200%] origin-top-left scale-50 pointer-events-none select-none">
-                            <SessionTerminal
-                                session={session}
-                                isActive={true} // Always active for preview so it renders
-                                terminalViewVisible={true}
-                                isPreview={true}
-                            // We need to pass the existing connection/ws if possible, 
-                            // but SessionTerminal creates its own WS. 
-                            // Ideally, we should share the WS instance or just let it create a read-only one?
-                            // For now, let's assume it creates a new connection which might be heavy.
-                            // Optimization: Pass a prop to SessionTerminal to reuse existing if available or be lightweight.
-                            // Actually, creating a new WS for every card might be too much.
-                            // A better approach for "Live Preview" might be to just show the last few lines of logs if available,
-                            // OR if the architecture supports it, attach to the same session ID.
-                            // Given the current implementation, it will create a new WS connection.
-                            />
+                            {session.protocol === 'rdp' ? (
+                                <SessionRDP
+                                    session={session}
+                                    onClose={() => { }}
+                                    onFocus={() => { }}
+                                    onSessionMetadata={() => { }}
+                                />
+                            ) : (
+                                <SessionTerminal
+                                    session={session}
+                                    isActive={true} // Always active for preview so it renders
+                                    terminalViewVisible={true}
+                                    isPreview={true}
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-2">

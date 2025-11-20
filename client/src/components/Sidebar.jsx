@@ -37,7 +37,7 @@ export function Sidebar({ collapsed, onToggle, view, setView, user }) {
             <div className={cn("flex items-center mb-8", collapsed ? 'justify-center' : 'justify-between px-2')}>
                 {!collapsed && (
                     <div>
-                        <p className="font-bold text-lg tracking-tight text-white">Web SSH</p>
+                        <p className="font-bold text-lg tracking-tight text-white">NexusVault</p>
                         <p className="text-xs text-gray-400">Control center</p>
                     </div>
                 )}

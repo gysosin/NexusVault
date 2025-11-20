@@ -22,7 +22,7 @@ function SidebarPreview({ session, isActive }) {
                         {session.username}@{session.host}
                     </span>
                 </div>
-                <span className="text-[10px] text-gray-500 font-mono">SSH</span>
+                <span className="text-[10px] text-gray-500 font-mono">{(session.protocol || 'ssh').toUpperCase()}</span>
             </div>
 
             {/* Content Preview Simulation */}
@@ -66,7 +66,11 @@ function SessionItem({ session, isActive, onClick, onClose, isSidebarExpanded })
                 )}
             >
                 <div className="relative shrink-0">
-                    <Monitor className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_8px_rgba(96,165,250,0.6)]")} />
+                    {session.protocol === 'rdp' ? (
+                        <Monitor className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_8px_rgba(96,165,250,0.6)]")} />
+                    ) : (
+                        <Terminal className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_8px_rgba(96,165,250,0.6)]")} />
+                    )}
                     {isActive && (
                         <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_4px_rgba(96,165,250,1)] border border-[#0d1117]" />
                     )}

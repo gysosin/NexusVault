@@ -39,11 +39,11 @@ export function SessionTerminal({
 
     const wsUrl = useMemo(() => {
         if (wsEndpoint) return wsEndpoint;
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        if (import.meta.env.DEV) {
-            return `${protocol}://localhost:${import.meta.env.VITE_SERVER_PORT || 3000}`;
-        }
-        return `${protocol}://${window.location.host}`;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = (import.meta.env.DEV && import.meta.env.VITE_SERVER_PORT)
+            ? `localhost:${import.meta.env.VITE_SERVER_PORT}`
+            : window.location.host;
+        return `${protocol}//${host}/ws`;
     }, [wsEndpoint]);
 
     const addLog = useCallback((message, level = 'info') => {
@@ -249,7 +249,7 @@ export function SessionTerminal({
             updateStatus('Connected');
 
             const sessionServerId = session.serverId || session.sessionId || session.id;
-            const payloadType = session.serverId ? 'resume' : (session.type || 'connect');
+            const payloadType = session.serverId ? 'resume' : (session.mode || 'connect');
             const payload = {
                 type: payloadType,
                 token: authToken,
@@ -262,22 +262,22 @@ export function SessionTerminal({
             };
 
             // Encrypt sensitive data if it's a connect request
-            if (payload.type === 'connect') {
-                const encrypted = encryptPayload({
-                    type: 'connect',
-                    host: session.host,
-                    username: session.username,
-                    password: session.password,
-                    port: session.port,
-                    token: authToken,
-                    connectionId: session.connectionId
-                });
-                ws.send(JSON.stringify({ type: 'connect', payload: encrypted }));
-            } else {
-                if (!payload.sessionId) {
-                    console.warn('Attempted to resume without server session id');
-                    return;
-                }
+                if (payload.type === 'connect') {
+                    const encrypted = encryptPayload({
+                        type: session.protocol || 'ssh',
+                        host: session.host,
+                        username: session.username,
+                        password: session.password,
+                        port: session.port,
+                        token: authToken,
+                        connectionId: session.connectionId
+                    });
+                    ws.send(JSON.stringify({ type: 'connect', payload: encrypted }));
+                } else {
+                    if (!payload.sessionId) {
+                        console.warn('Attempted to resume without server session id');
+                        return;
+                    }
                 ws.send(JSON.stringify({
                     type: 'resume',
                     sessionId: payload.sessionId,
@@ -344,7 +344,7 @@ export function SessionTerminal({
                 ws.close();
             }
         };
-    }, [authToken, session.id, session.host, session.username, session.port, session.type, session.connectionId, wsUrl, isPreview]);
+    }, [authToken, session.id, session.host, session.username, session.port, session.mode, session.connectionId, session.protocol, wsUrl, isPreview]);
 
     // Handle Visibility/Resize when switching tabs
     useEffect(() => {

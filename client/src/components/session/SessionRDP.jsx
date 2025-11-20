@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Maximize2, Minimize2, MoreVertical, X, RefreshCw, MousePointer2 } from 'lucide-react';
+import { Maximize2, Minimize2, MoreVertical, X, RefreshCw, MousePointer2, WifiOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -7,14 +7,23 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { encryptPayload } from '../../api/encryption';
 import { useAuth } from '../../context/AuthContext';
 
-export default function SessionRDP({ session, onClose, onFocus, onSessionMetadata }) {
+export default function SessionRDP({ session, onClose, onFocus, onSessionMetadata, isPreview = false }) {
     const canvasRef = useRef(null);
     const wsRef = useRef(null);
     const [status, setStatus] = useState('Connecting...');
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isPermanentlyDisconnected, setIsPermanentlyDisconnected] = useState(false);
     const containerRef = useRef(null);
     const { token: authToken } = useAuth();
     const onSessionMetadataRef = useRef(onSessionMetadata);
@@ -212,16 +221,19 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
         };
     }, [dimensions.width, dimensions.height]);
 
-    const connectWebSocket = useCallback(() => {
+    const connectWebSocket = useCallback((forceNew = false) => {
         if (!authToken) return;
 
-        // If a socket is already open, do nothing.
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            return;
-        }
-        // If there's a socket in CLOSING/CLOSED, ensure it's cleaned up.
-        if (wsRef.current && wsRef.current.readyState !== WebSocket.CONNECTING) {
-            try { wsRef.current.close(); } catch (_) { }
+        // Clean up existing WebSocket regardless of state
+        if (wsRef.current) {
+            try {
+                wsRef.current.onopen = null;
+                wsRef.current.onmessage = null;
+                wsRef.current.onclose = null;
+                wsRef.current.onerror = null;
+                wsRef.current.close();
+            } catch (_) { }
+            wsRef.current = null;
         }
 
         const ws = new WebSocket(wsUrl);
@@ -234,7 +246,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
         ws.onopen = () => {
             setStatus('Connected');
             const sessionServerId = session.serverId || session.sessionId || session.id;
-            const mode = session.serverId ? 'resume' : (session.mode || 'connect');
+            const mode = (session.serverId && !forceNew) ? 'resume' : (session.mode || 'connect');
             surfaceSizeRef.current = {
                 width: Math.floor(latestDimensionsRef.current.width),
                 height: Math.floor(latestDimensionsRef.current.height)
@@ -257,6 +269,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                 if (!sessionServerId) {
                     console.warn('Attempted to resume without a server session id for RDP');
                     setStatus('Unable to resume session');
+                    setIsPermanentlyDisconnected(true);
                     return;
                 }
                 ws.send(JSON.stringify({
@@ -315,6 +328,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                 setStatus(msg.message);
             } else if (msg.type === 'error') {
                 setStatus(`Error: ${msg.message}`);
+                setIsPermanentlyDisconnected(true);
             } else if (msg.type === 'session' && msg.sessionId) {
                 onSessionMetadataRef.current?.(session.id, msg.sessionId);
             } else if (msg.type === 'rdp-size') {
@@ -330,10 +344,12 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
 
         ws.onclose = () => {
             setStatus('Disconnected');
+            setIsPermanentlyDisconnected(true);
         };
 
         ws.onerror = (err) => {
             setStatus('Connection Error');
+            setIsPermanentlyDisconnected(true);
             console.error('WebSocket error:', err);
         };
     }, [authToken, session.serverId, session.sessionId, session.id, session.mode, session.protocol, session.host, session.username, session.password, session.port, session.connectionId, wsUrl, renderBitmap, latestDimensionsRef]);
@@ -382,12 +398,15 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
     // Watchdog: if no frames for a while, force reconnect of the WebSocket/session.
     useEffect(() => {
         const interval = setInterval(() => {
+            // Don't auto-reconnect if permanently disconnected
+            if (isPermanentlyDisconnected) return;
+
             const now = Date.now();
             const sinceFrame = now - lastFrameAtRef.current;
             const ws = wsRef.current;
             if (!ws) return;
             if (ws.readyState === WebSocket.CLOSED) {
-                return connectWebSocket();
+                return;
             }
             if (sinceFrame > 5000 && ws.readyState === WebSocket.OPEN) {
                 if (now - lastReconnectAtRef.current < 4000) return;
@@ -398,7 +417,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
             }
         }, 2000);
         return () => clearInterval(interval);
-    }, [connectWebSocket]);
+    }, [connectWebSocket, isPermanentlyDisconnected]);
 
     const lastMouseMoveTimeRef = useRef(0);
     const MOUSE_MOVE_THROTTLE = 8; // Reduced to 8ms for smoother 120Hz mouse updates
@@ -514,38 +533,40 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
             className="flex flex-col h-full min-h-0 bg-black text-white overflow-hidden"
             onClick={onFocus}
         >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-white/10 shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-blue-500/10 rounded-md">
-                        <MousePointer2 className="w-4 h-4 text-blue-400" />
+            {/* Header - Only show if not in preview mode */}
+            {!isPreview && (
+                <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-white/10 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-blue-500/10 rounded-md">
+                            <MousePointer2 className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-200">{session.username}@{session.host}</h3>
+                            <p className="text-xs text-gray-500 font-mono">{status}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-200">{session.username}@{session.host}</h3>
-                        <p className="text-xs text-gray-500 font-mono">{status}</p>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8 text-gray-400 hover:text-white">
+                            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+                                    <MoreVertical className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 bg-[#161b22] border-white/10 text-gray-300">
+                                <DropdownMenuItem onClick={() => window.location.reload()} className="gap-2 cursor-pointer hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white">
+                                    <RefreshCw className="w-4 h-4" /> Reload
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleDisconnect} className="gap-2 text-red-400 cursor-pointer hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300">
+                                    <X className="w-4 h-4" /> Disconnect
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8 text-gray-400 hover:text-white">
-                        {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
-                                <MoreVertical className="w-4 h-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 bg-[#161b22] border-white/10 text-gray-300">
-                            <DropdownMenuItem onClick={() => window.location.reload()} className="gap-2 cursor-pointer hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white">
-                                <RefreshCw className="w-4 h-4" /> Reload
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleDisconnect} className="gap-2 text-red-400 cursor-pointer hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300">
-                                <X className="w-4 h-4" /> Disconnect
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
+            )}
 
             {/* RDP Canvas */}
             <div className="flex-1 overflow-hidden flex items-center justify-center bg-[#0d1117] relative w-full h-full min-h-0">
@@ -570,27 +591,58 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                     onKeyUp={handleKeyUp}
                 />
 
-                {/* Disconnection Overlay */}
-                {(status === 'Disconnected' || status.includes('Connection Error')) && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                        <div className="text-center p-8 bg-[#161b22] border border-red-500/30 rounded-lg shadow-2xl">
-                            <div className="flex justify-center mb-4">
-                                <div className="p-3 bg-red-500/10 rounded-full">
-                                    <X className="w-12 h-12 text-red-500" />
+                {/* Disconnection Overlay - Only show if not in preview mode */}
+                {!isPreview && isPermanentlyDisconnected && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/90 via-black/85 to-red-950/20 backdrop-blur-md animate-in fade-in duration-300">
+                        <Card className="w-full max-w-md border-red-500/20 bg-gradient-to-br from-[#1c1f26] to-[#161b22] shadow-2xl animate-in zoom-in-95 duration-300">
+                            <CardHeader className="text-center pb-4">
+                                <div className="flex justify-center mb-4">
+                                    <div className="relative">
+                                        {/* Animated pulsing ring */}
+                                        <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+                                        <div className="relative p-4 bg-gradient-to-br from-red-500/20 to-red-600/10 rounded-full border-2 border-red-500/30">
+                                            <WifiOff className="w-10 h-10 text-red-400" strokeWidth={2.5} />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <h2 className="text-2xl font-semibold text-red-400 mb-2">
-                                {status === 'Disconnected' ? 'Disconnected' : 'Connection Error'}
-                            </h2>
-                            <p className="text-gray-400 mb-6">
-                                The RDP session has been terminated
-                            </p>
-                            <div className="flex gap-3 justify-center">
+                                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
+                                    {status === 'Disconnected' ? 'Connection Lost' : 'Connection Error'}
+                                </CardTitle>
+                                <CardDescription className="text-base text-gray-300 mt-2">
+                                    The RDP session has been terminated
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="pb-4">
+                                <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                                    <div className="text-sm text-gray-400 leading-relaxed">
+                                        {status.includes('Connection Error')
+                                            ? 'Unable to establish connection to the remote desktop. Please check your network and try again.'
+                                            : 'Your session has ended. You can reconnect or close this window.'}
+                                    </div>
+                                </div>
+                            </CardContent>
+
+                            <CardFooter className="flex gap-3 pt-2">
                                 <Button
                                     onClick={() => {
-                                        connectWebSocket();
+                                        // Reset all states
+                                        setIsPermanentlyDisconnected(false);
+                                        setStatus('Connecting...');
+                                        // Clear frame queue
+                                        frameQueueRef.current = [];
+                                        if (animationFrameRef.current) {
+                                            cancelAnimationFrame(animationFrameRef.current);
+                                            animationFrameRef.current = null;
+                                        }
+                                        // Reset frame timestamp
+                                        lastFrameAtRef.current = Date.now();
+                                        // Reconnect with forceNew=true to start a fresh session
+                                        connectWebSocket(true);
                                     }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-blue-500/20 transition-all duration-200"
+                                    size="lg"
                                 >
                                     <RefreshCw className="w-4 h-4 mr-2" />
                                     Reconnect
@@ -598,12 +650,14 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                                 <Button
                                     onClick={handleDisconnect}
                                     variant="outline"
-                                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                                    className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200"
+                                    size="lg"
                                 >
+                                    <X className="w-4 h-4 mr-2" />
                                     Close
                                 </Button>
-                            </div>
-                        </div>
+                            </CardFooter>
+                        </Card>
                     </div>
                 )}
             </div>

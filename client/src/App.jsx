@@ -5,9 +5,9 @@ import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TerminalPage } from './pages/TerminalPage';
-import { SessionsDashboard } from './components/SessionsDashboard';
-import { Settings } from './components/Settings';
-import { AdminPanel } from './components/AdminPanel';
+import { SessionsDashboard } from './components/session/SessionsDashboard';
+import { Settings } from './components/settings/Settings';
+import { AdminPanel } from './components/admin/AdminPanel';
 
 const AppContent = () => {
   const { user, loading } = useAuth();

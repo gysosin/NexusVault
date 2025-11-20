@@ -7,8 +7,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { encryptPayload } from '../api/encryption';
-import { useAuth } from '../context/AuthContext';
+import { encryptPayload } from '../../api/encryption';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SessionRDP({ session, onClose, onFocus, onSessionMetadata }) {
     const canvasRef = useRef(null);
@@ -569,6 +569,43 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                     onKeyDown={handleKeyDown}
                     onKeyUp={handleKeyUp}
                 />
+
+                {/* Disconnection Overlay */}
+                {(status === 'Disconnected' || status.includes('Connection Error')) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                        <div className="text-center p-8 bg-[#161b22] border border-red-500/30 rounded-lg shadow-2xl">
+                            <div className="flex justify-center mb-4">
+                                <div className="p-3 bg-red-500/10 rounded-full">
+                                    <X className="w-12 h-12 text-red-500" />
+                                </div>
+                            </div>
+                            <h2 className="text-2xl font-semibold text-red-400 mb-2">
+                                {status === 'Disconnected' ? 'Disconnected' : 'Connection Error'}
+                            </h2>
+                            <p className="text-gray-400 mb-6">
+                                The RDP session has been terminated
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                                <Button
+                                    onClick={() => {
+                                        connectWebSocket();
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Reconnect
+                                </Button>
+                                <Button
+                                    onClick={handleDisconnect}
+                                    variant="outline"
+                                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

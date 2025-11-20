@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Dashboard } from '../components/Dashboard';
+import { Dashboard } from '../components/dashboard/Dashboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

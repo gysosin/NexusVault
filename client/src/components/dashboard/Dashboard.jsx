@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Terminal, Trash2, Search, Server, Share2, Activity } from 'lucide-react';
-import { AddConnectionDialog } from './AddConnectionDialog';
-import { SharingDialog } from './SharingDialog';
+import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
+import { SharingDialog } from '../dialogs/SharingDialog';
 import { Badge } from '@/components/ui/badge';
 
 export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = [] }) {

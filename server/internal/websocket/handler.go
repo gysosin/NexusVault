@@ -127,7 +127,7 @@ func HandleWebSocket(c *gin.Context) {
 			// If connectionID provided, fetch details
 			if msg.ConnectionID != 0 {
 				var conn models.Connection
-				err := db.DB.Get(&conn, "SELECT * FROM connections WHERE id = $1 AND user_id = $2", msg.ConnectionID, claims.UserID)
+				err := db.DB.Get(&conn, "SELECT id, user_id, name, host, port, username, password, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", msg.ConnectionID, claims.UserID)
 				if err != nil {
 					sendError("Connection not found.")
 					continue
@@ -135,11 +135,18 @@ func HandleWebSocket(c *gin.Context) {
 				msg.Host = conn.Host
 				msg.Username = conn.Username
 				msg.Port = conn.Port
+				utils.Log("Connection lookup successful", "ID:", msg.ConnectionID, "HasPassword:", conn.HasPassword, "Password len:", len(conn.Password))
 				if conn.Password != "" {
 					decryptedPass, err := utils.Decrypt(conn.Password)
-					if err == nil {
-						msg.Password = decryptedPass
+					if err != nil {
+						utils.Log("Password decryption failed:", err)
+						sendError("Failed to decrypt saved password.")
+						continue
 					}
+					msg.Password = decryptedPass
+					utils.Log("Password decrypted successfully, length:", len(decryptedPass))
+				} else {
+					utils.Log("No password stored for this connection")
 				}
 				if msg.Protocol == "" && conn.Type != "" {
 					msg.Protocol = conn.Type

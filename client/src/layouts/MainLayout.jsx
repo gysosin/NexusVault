@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Navbar } from '../components/Navbar';
-import { Sidebar } from '../components/Sidebar';
+import { Navbar } from '../components/layout/Navbar';
+import { Sidebar } from '../components/layout/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
-import SessionSidebar from '../components/SessionSidebar';
+import { useEffect } from 'react';
+import SessionSidebar from '../components/session/SessionSidebar';
 
 export const MainLayout = ({ children, view, setView }) => {
     const { user, logout } = useAuth();

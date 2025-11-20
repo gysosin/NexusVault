@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"go-server/internal/db"
 	"go-server/internal/models"
 	"go-server/internal/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 type CreateConnectionRequest struct {
@@ -32,7 +33,7 @@ func GetConnections(c *gin.Context) {
 	userID, _ := c.Get("userId")
 
 	var connections []models.Connection
-	query := `SELECT id, user_id, name, host, port, username, type, created_at FROM connections WHERE user_id = $1 ORDER BY created_at DESC`
+	query := `SELECT id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE user_id = $1 ORDER BY created_at DESC`
 	err := db.DB.Select(&connections, query, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch connections"})
@@ -79,7 +80,7 @@ func CreateConnection(c *gin.Context) {
 	}
 
 	var conn models.Connection
-	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, created_at`
+	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
 	err := db.DB.QueryRowx(query, userID, req.Name, req.Host, req.Port, req.Username, encryptedPassword, req.Type).StructScan(&conn)
 
 	if err != nil {
@@ -123,15 +124,25 @@ func UpdateConnection(c *gin.Context) {
 	// But if password is empty, we keep the old one.
 
 	name := req.Name
-	if name == "" { name = existing.Name }
+	if name == "" {
+		name = existing.Name
+	}
 	host := req.Host
-	if host == "" { host = existing.Host }
+	if host == "" {
+		host = existing.Host
+	}
 	port := req.Port
-	if port == 0 { port = existing.Port }
+	if port == 0 {
+		port = existing.Port
+	}
 	username := req.Username
-	if username == "" { username = existing.Username }
+	if username == "" {
+		username = existing.Username
+	}
 	connType := req.Type
-	if connType == "" { connType = existing.Type }
+	if connType == "" {
+		connType = existing.Type
+	}
 
 	password := existing.Password
 	if req.Password != "" {
@@ -144,7 +155,7 @@ func UpdateConnection(c *gin.Context) {
 	}
 
 	var updated models.Connection
-	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, created_at`
+	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
 	err = db.DB.QueryRowx(query, name, host, port, username, password, connType, id, userID).StructScan(&updated)
 
 	if err != nil {

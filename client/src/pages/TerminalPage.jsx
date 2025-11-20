@@ -1,6 +1,6 @@
 import React from 'react';
-import { SessionTerminal } from '../components/SessionTerminal';
-import SessionRDP from '../components/SessionRDP';
+import { SessionTerminal } from '../components/session/SessionTerminal';
+import SessionRDP from '../components/session/SessionRDP';
 import { Button } from '@/components/ui/button';
 import { useSession } from '../context/SessionContext';
 import { Plus } from 'lucide-react';

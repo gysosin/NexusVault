@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import AuthPanel from '../components/AuthPanel';
+import AuthPanel from '../components/auth/AuthPanel';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage = () => {

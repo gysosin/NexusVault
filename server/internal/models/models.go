@@ -21,10 +21,11 @@ type Connection struct {
 	Name      string    `db:"name" json:"name"`
 	Host      string    `db:"host" json:"host"`
 	Port      int       `db:"port" json:"port"`
-	Username  string    `db:"username" json:"username"`
-	Password  string    `db:"password" json:"-"` // Encrypted
-	Type      string    `db:"type" json:"type"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	Username    string    `db:"username" json:"username"`
+	Password    string    `db:"password" json:"-"` // Encrypted
+	HasPassword bool      `db:"has_password" json:"hasPassword"`
+	Type        string    `db:"type" json:"type"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 }
 
 type ActivityLog struct {

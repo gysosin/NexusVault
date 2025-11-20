@@ -109,7 +109,8 @@ export const SessionProvider = ({ children }) => {
                 .map((s) => ({
                     id: makeId(),
                     serverId: s.id,
-                    type: 'resume',
+                    mode: 'resume',
+                    protocol: s.protocol || s.type || 'ssh',
                     host: s.host,
                     username: s.username,
                     port: s.port,
@@ -144,7 +145,8 @@ export const SessionProvider = ({ children }) => {
 
         const session = {
             id: makeId(),
-            type: 'connect',
+            mode: 'connect',
+            protocol: connectionDetails.type || 'ssh',
             host: connectionDetails.host,
             username: connectionDetails.username,
             port: connectionDetails.port || 22,

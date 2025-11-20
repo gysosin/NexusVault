@@ -11,6 +11,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Plus } from 'lucide-react';
 
 export function AddConnectionDialog({ onAdd }) {
@@ -22,6 +29,7 @@ export function AddConnectionDialog({ onAdd }) {
         port: '22',
         username: '',
         password: '',
+        type: 'ssh',
     });
 
     const handleSubmit = async (e) => {
@@ -30,12 +38,20 @@ export function AddConnectionDialog({ onAdd }) {
         try {
             await onAdd({ ...form, password: form.password });
             setOpen(false);
-            setForm({ name: '', host: '', port: '22', username: '', password: '' });
+            setForm({ name: '', host: '', port: '22', username: '', password: '', type: 'ssh' });
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleTypeChange = (value) => {
+        setForm(prev => ({
+            ...prev,
+            type: value,
+            port: value === 'rdp' ? '3389' : '22'
+        }));
     };
 
     return (
@@ -55,6 +71,18 @@ export function AddConnectionDialog({ onAdd }) {
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="type">Connection Type</Label>
+                            <Select value={form.type} onValueChange={handleTypeChange}>
+                                <SelectTrigger className="bg-white/5 border-white/10">
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#161b22] border-white/10 text-white">
+                                    <SelectItem value="ssh">SSH (Secure Shell)</SelectItem>
+                                    <SelectItem value="rdp">RDP (Remote Desktop)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="grid gap-2">
                             <Label htmlFor="name">Name (Label)</Label>
                             <Input
@@ -84,7 +112,7 @@ export function AddConnectionDialog({ onAdd }) {
                                     id="port"
                                     value={form.port}
                                     onChange={(e) => setForm({ ...form, port: e.target.value })}
-                                    placeholder="22"
+                                    placeholder={form.type === 'rdp' ? '3389' : '22'}
                                     className="bg-white/5 border-white/10"
                                     required
                                 />

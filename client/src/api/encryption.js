@@ -1,6 +1,7 @@
 import CryptoJS from 'crypto-js';
 
-const API_SECRET = import.meta.env.VITE_API_SECRET || 'dev-secret-key-change-in-prod';
+// Must match server's API_SECRET (defaults to "default_api_secret")
+const API_SECRET = import.meta.env.VITE_API_SECRET || 'default_api_secret';
 
 export const encryptPayload = (data) => {
   if (!data) return null;

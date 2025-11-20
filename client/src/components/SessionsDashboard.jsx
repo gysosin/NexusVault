@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Terminal, Activity, Clock, Monitor } from 'lucide-react';
 import { SessionTerminal } from './SessionTerminal';
+import SessionRDP from './SessionRDP';
 
 export function SessionsDashboard({ sessions, onSwitchSession, previewMode = 'hover' }) {
     // Group sessions by connection (User@Host)

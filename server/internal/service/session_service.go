@@ -1,0 +1,162 @@
+package service
+
+import (
+	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
+	client "github.com/tomatome/grdp/client"
+	"golang.org/x/crypto/ssh"
+)
+
+type SessionType string
+
+const (
+	SessionTypeSSH SessionType = "ssh"
+	SessionTypeRDP SessionType = "rdp"
+)
+
+type Session struct {
+	ID           string
+	UserID       int
+	ConnectionID *int
+	Host         string
+	Port         int
+	Username     string
+	Password     string // Keep for RDP reconnect/resize? Or SSH?
+	Type         SessionType
+	CreatedAt    time.Time
+	LastActivity time.Time
+
+	// RDP lifecycle coordination
+	RDPConnMu       sync.Mutex
+	RDPReconnecting bool
+	RDPLastResize   time.Time
+
+	// WebSocket connections (can be multiple for same session?)
+	// Node.js implementation supports multiple sockets per session (Set<WebSocket>)
+	Sockets      map[*SafeConn]bool
+	SocketsMutex sync.Mutex
+
+	// Buffer for replay
+	Buffer      string
+	BufferMutex sync.Mutex
+
+	// SSH specific
+	SSHClient    *ssh.Client
+	ShellSession *ssh.Session
+	Stdin        func(string) error // Helper to write to stdin
+
+	// RDP specific
+	RDPClient *client.Client
+	Width     int
+	Height    int
+}
+
+// SafeConn wraps websocket.Conn to ensure thread-safe writes
+type SafeConn struct {
+	Conn *websocket.Conn
+	Mu   sync.Mutex
+}
+
+func NewSafeConn(conn *websocket.Conn) *SafeConn {
+	return &SafeConn{Conn: conn}
+}
+
+func (sc *SafeConn) WriteJSON(v interface{}) error {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+	return sc.Conn.WriteJSON(v)
+}
+
+func (sc *SafeConn) WriteMessage(messageType int, data []byte) error {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+	return sc.Conn.WriteMessage(messageType, data)
+}
+
+func (sc *SafeConn) Close() error {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+	return sc.Conn.Close()
+}
+
+func (sc *SafeConn) ReadMessage() (int, []byte, error) {
+	return sc.Conn.ReadMessage()
+}
+
+var (
+	sessions = make(map[string]*Session)
+	mu       sync.RWMutex
+)
+
+func AddSession(s *Session) {
+	mu.Lock()
+	defer mu.Unlock()
+	sessions[s.ID] = s
+}
+
+func GetSession(id string) *Session {
+	mu.RLock()
+	defer mu.RUnlock()
+	return sessions[id]
+}
+
+func RemoveSession(id string) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(sessions, id)
+}
+
+func GetSessionsForUser(userID int) []*Session {
+	mu.RLock()
+	defer mu.RUnlock()
+	var userSessions []*Session
+	for _, s := range sessions {
+		if s.UserID == userID {
+			userSessions = append(userSessions, s)
+		}
+	}
+	return userSessions
+}
+
+func (s *Session) AddSocket(ws *SafeConn) {
+	s.SocketsMutex.Lock()
+	defer s.SocketsMutex.Unlock()
+	if s.Sockets == nil {
+		s.Sockets = make(map[*SafeConn]bool)
+	}
+	s.Sockets[ws] = true
+}
+
+func (s *Session) RemoveSocket(ws *SafeConn) {
+	s.SocketsMutex.Lock()
+	defer s.SocketsMutex.Unlock()
+	delete(s.Sockets, ws)
+}
+
+func (s *Session) Broadcast(msg interface{}) {
+	s.SocketsMutex.Lock()
+	defer s.SocketsMutex.Unlock()
+	for ws := range s.Sockets {
+		ws.WriteJSON(msg)
+	}
+}
+
+func (s *Session) BroadcastBinary(data []byte) {
+	s.SocketsMutex.Lock()
+	defer s.SocketsMutex.Unlock()
+	for ws := range s.Sockets {
+		ws.WriteMessage(websocket.BinaryMessage, data)
+	}
+}
+
+func (s *Session) AppendBuffer(data string) {
+	s.BufferMutex.Lock()
+	defer s.BufferMutex.Unlock()
+	// Limit buffer size?
+	if len(s.Buffer) > 100000 {
+		s.Buffer = s.Buffer[len(s.Buffer)-100000:]
+	}
+	s.Buffer += data
+}

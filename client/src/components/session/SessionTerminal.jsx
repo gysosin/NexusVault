@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
-import { encryptPayload } from '../api/encryption';
+import { encryptPayload } from '../../api/encryption';
 import { ScrollText, Power, X, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionHistory } from './SessionHistory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export function SessionTerminal({
     session,
@@ -262,22 +262,22 @@ export function SessionTerminal({
             };
 
             // Encrypt sensitive data if it's a connect request
-                if (payload.type === 'connect') {
-                    const encrypted = encryptPayload({
-                        type: session.protocol || 'ssh',
-                        host: session.host,
-                        username: session.username,
-                        password: session.password,
-                        port: session.port,
-                        token: authToken,
-                        connectionId: session.connectionId
-                    });
-                    ws.send(JSON.stringify({ type: 'connect', payload: encrypted }));
-                } else {
-                    if (!payload.sessionId) {
-                        console.warn('Attempted to resume without server session id');
-                        return;
-                    }
+            if (payload.type === 'connect') {
+                const encrypted = encryptPayload({
+                    type: session.protocol || 'ssh',
+                    host: session.host,
+                    username: session.username,
+                    password: session.password,
+                    port: session.port,
+                    token: authToken,
+                    connectionId: session.connectionId
+                });
+                ws.send(JSON.stringify({ type: 'connect', payload: encrypted }));
+            } else {
+                if (!payload.sessionId) {
+                    console.warn('Attempted to resume without server session id');
+                    return;
+                }
                 ws.send(JSON.stringify({
                     type: 'resume',
                     sessionId: payload.sessionId,

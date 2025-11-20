@@ -37,7 +37,7 @@ export const LoginPage = () => {
             <Card className="w-full max-w-[520px] bg-brand-surface border-brand-border p-6 shadow-[0_20px_45px_rgba(0,0,0,0.6)] rounded-3xl">
                 <div className="space-y-4 text-center">
                     <h1 className="text-3xl font-bold">Log In to Your Account</h1>
-                    <p className="text-gray-400">Welcome back to the future of finance.</p>
+                    <p className="text-gray-400">Welcome back to Secure Remote Access.</p>
                 </div>
                 <div className="mt-6 space-y-6">
                     <AuthPanel

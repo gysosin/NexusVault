@@ -30,7 +30,7 @@ export function SessionsDashboard({ sessions, onSwitchSession, previewMode = 'ho
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Active Sessions</h1>
-                    <p className="text-muted-foreground">Monitor and manage your running SSH sessions.</p>
+                    <p className="text-muted-foreground">Monitor and manage your running remote sessions.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20 px-3 py-1">

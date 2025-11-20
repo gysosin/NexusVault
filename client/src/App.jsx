@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { SessionsDashboard } from './components/session/SessionsDashboard';
+import { PlanPage } from './pages/PlanPage';
 import { Settings } from './components/settings/Settings';
 import { AdminPanel } from './components/admin/AdminPanel';
 
@@ -70,6 +71,8 @@ const AppContent = () => {
       )}
 
       {view === 'admin' && <AdminPanel />}
+
+      {view === 'plan' && <PlanPage />}
 
       <TerminalPage visible={view === 'terminal'} setView={setView} />
     </MainLayout>

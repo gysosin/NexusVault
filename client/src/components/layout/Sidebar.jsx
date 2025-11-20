@@ -11,7 +11,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Shield,
-    LayoutDashboard
+    LayoutDashboard,
+    Map
 } from 'lucide-react';
 
 const quickLinks = [
@@ -65,6 +66,20 @@ export function Sidebar({ collapsed, onToggle, view, setView, user }) {
                     >
                         <LayoutDashboard size={20} />
                         {!collapsed && <span>Dashboard</span>}
+                    </Button>
+
+                    <Button
+                        variant={view === 'plan' ? 'secondary' : 'ghost'}
+                        className={cn(
+                            "w-full flex items-center gap-3 transition-colors",
+                            collapsed ? 'justify-center px-0 h-12 w-12 mx-auto rounded-xl' : 'justify-start px-4 h-10 rounded-lg',
+                            view === 'plan' ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white hover:bg-white/5'
+                        )}
+                        onClick={() => setView('plan')}
+                        title="Roadmap"
+                    >
+                        <Map size={20} />
+                        {!collapsed && <span>Roadmap</span>}
                     </Button>
 
                     {user?.role === 'admin' && (

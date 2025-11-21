@@ -88,6 +88,9 @@ func (c *RdpClient) On(event string, f interface{}) {
 	c.pdu.On(event, f)
 }
 func (c *RdpClient) KeyUp(sc int, name string) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.ScancodeKeyEvent{}
 	if sc&0x100 != 0 {
 		p.KeyboardFlags |= pdu.KBDFLAGS_EXTENDED
@@ -98,6 +101,9 @@ func (c *RdpClient) KeyUp(sc int, name string) {
 	c.pdu.SendInputEvents(pdu.INPUT_EVENT_SCANCODE, []pdu.InputEventsInterface{p})
 }
 func (c *RdpClient) KeyDown(sc int, name string) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.ScancodeKeyEvent{}
 	if sc&0x100 != 0 {
 		p.KeyboardFlags |= pdu.KBDFLAGS_EXTENDED
@@ -108,6 +114,9 @@ func (c *RdpClient) KeyDown(sc int, name string) {
 }
 
 func (c *RdpClient) MouseMove(x, y int) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.PointerEvent{}
 	p.PointerFlags |= pdu.PTRFLAGS_MOVE
 	p.XPos = uint16(x)
@@ -116,6 +125,9 @@ func (c *RdpClient) MouseMove(x, y int) {
 }
 
 func (c *RdpClient) MouseWheel(scroll, x, y int) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.PointerEvent{}
 	p.PointerFlags |= pdu.PTRFLAGS_WHEEL
 	p.XPos = uint16(x)
@@ -124,6 +136,9 @@ func (c *RdpClient) MouseWheel(scroll, x, y int) {
 }
 
 func (c *RdpClient) MouseUp(button int, x, y int) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.PointerEvent{}
 
 	switch button {
@@ -142,6 +157,9 @@ func (c *RdpClient) MouseUp(button int, x, y int) {
 	c.pdu.SendInputEvents(pdu.INPUT_EVENT_MOUSE, []pdu.InputEventsInterface{p})
 }
 func (c *RdpClient) MouseDown(button int, x, y int) {
+	if c.pdu == nil {
+		return
+	}
 	p := &pdu.PointerEvent{}
 
 	p.PointerFlags |= pdu.PTRFLAGS_DOWN

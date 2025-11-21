@@ -1,60 +1,102 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Monitor, X, Plus, Activity, Wifi, Terminal, Folder, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-function SidebarPreview({ session, isActive }) {
-    return (
+import SessionRDP from './SessionRDP';
+import { SessionTerminal } from './SessionTerminal';
+
+function PortalPreview({ session, isActive, parentRect }) {
+    if (!parentRect) return null;
+
+    // Calculate position: to the left of the sidebar item
+    const style = {
+        top: parentRect.top,
+        left: parentRect.left - 420, // 400px width + 20px gap
+    };
+
+    return createPortal(
         <motion.div
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-full top-0 mr-2 w-64 bg-[#0d1117]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+            style={style}
+            className="fixed w-[400px] h-[300px] bg-[#0d1117] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[9999]"
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/5">
+            <div className="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/5 z-10 relative">
                 <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                    <span className="text-xs font-medium text-gray-200 truncate max-w-[120px]">
+                    <span className="text-xs font-medium text-gray-200 truncate max-w-[200px]">
                         {session.username}@{session.host}
                     </span>
                 </div>
                 <span className="text-[10px] text-gray-500 font-mono">{(session.protocol || 'ssh').toUpperCase()}</span>
             </div>
 
-            {/* Content Preview Simulation */}
-            <div className="p-3 space-y-2">
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
-                    <Activity className="w-3 h-3" />
-                    <span>Status: {session.status || 'Connected'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
-                    <Wifi className="w-3 h-3" />
-                    <span>Port: {session.port || 22}</span>
-                </div>
-
-                {/* Fake Terminal Lines */}
-                <div className="mt-3 space-y-1 opacity-50">
-                    <div className="h-1.5 w-3/4 bg-gray-700/50 rounded-full" />
-                    <div className="h-1.5 w-1/2 bg-gray-700/50 rounded-full" />
-                    <div className="h-1.5 w-2/3 bg-gray-700/50 rounded-full" />
+            {/* Real Content Preview */}
+            <div className="relative w-full h-full bg-black">
+                <div className="absolute inset-0 w-[200%] h-[200%] origin-top-left scale-50 pointer-events-none select-none">
+                    {session.protocol === 'rdp' ? (
+                        <SessionRDP
+                            session={session}
+                            onClose={() => { }}
+                            onFocus={() => { }}
+                            onSessionMetadata={() => { }}
+                            isPreview={true}
+                        />
+                    ) : (
+                        <SessionTerminal
+                            session={session}
+                            isActive={true}
+                            terminalViewVisible={true}
+                            isPreview={true}
+                        />
+                    )}
                 </div>
             </div>
-        </motion.div>
+        </motion.div>,
+        document.body
     );
 }
 
 function SessionItem({ session, isActive, onClick, onClose, isSidebarExpanded }) {
     const [isHovered, setIsHovered] = useState(false);
+    const [rect, setRect] = useState(null);
+    const itemRef = useRef(null);
+    const hoverTimeoutRef = useRef(null);
+
+    const handleMouseEnter = () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = setTimeout(() => {
+            if (itemRef.current) {
+                setRect(itemRef.current.getBoundingClientRect());
+            }
+            setIsHovered(true);
+        }, 300); // 300ms debounce
+    };
+
+    const handleMouseLeave = () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        setIsHovered(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        };
+    }, []);
 
     return (
         <div
+            ref={itemRef}
             className="relative group"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             <button
                 onClick={onClick}
@@ -103,8 +145,8 @@ function SessionItem({ session, isActive, onClick, onClose, isSidebarExpanded })
 
             {/* Preview on Hover (only when collapsed or requested) */}
             <AnimatePresence>
-                {isHovered && !isSidebarExpanded && (
-                    <SidebarPreview session={session} isActive={isActive} />
+                {isHovered && (
+                    <PortalPreview session={session} isActive={isActive} parentRect={rect} />
                 )}
             </AnimatePresence>
         </div>
@@ -188,20 +230,23 @@ export function SessionSidebar({ sessions, activeSessionId, onSwitchSession, onC
     return (
         <motion.div
             initial={false}
-            animate={{ width: isExpanded ? 280 : 60 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="h-full bg-[#0d1117]/95 backdrop-blur-xl border-l border-white/10 flex flex-col shadow-2xl relative flex-shrink-0"
+            animate={{ width: isExpanded ? 280 : 80 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className={cn(
+                "h-full bg-brand-surface border border-brand-border flex flex-col shadow-2xl relative flex-shrink-0 rounded-[28px] py-6",
+                !isExpanded && "items-center"
+            )}
         >
             {/* Toggle Handle */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="absolute -left-3 top-6 w-6 h-6 bg-[#0d1117] border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:scale-110 transition-all z-50"
+                className="absolute -left-3 top-10 w-6 h-6 bg-[#0d1117] border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:scale-110 transition-all z-50"
             >
                 {isExpanded ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
             </button>
 
             {/* Header */}
-            <div className={cn("p-4 border-b border-white/5 flex items-center", isExpanded ? "justify-between" : "justify-center")}>
+            <div className={cn("flex items-center mb-4 px-4", isExpanded ? "justify-between" : "justify-center")}>
                 {isExpanded ? (
                     <span className="text-sm font-semibold text-gray-200">Active Sessions</span>
                 ) : (
@@ -227,14 +272,15 @@ export function SessionSidebar({ sessions, activeSessionId, onSwitchSession, onC
             </ScrollArea>
 
             {/* Footer Actions */}
-            <div className="p-2 border-t border-white/5">
+            <div className="px-4 mt-2">
                 <Button
                     variant="ghost"
                     onClick={onNewSession}
                     className={cn(
                         "w-full flex items-center gap-2 text-gray-400 hover:text-white hover:bg-white/5",
-                        !isExpanded && "justify-center px-0"
+                        !isExpanded && "justify-center px-0 h-10 w-10 rounded-xl"
                     )}
+                    title={!isExpanded ? "New Connection" : undefined}
                 >
                     <Plus className="w-5 h-5" />
                     {isExpanded && <span>New Connection</span>}

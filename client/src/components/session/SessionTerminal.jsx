@@ -58,37 +58,43 @@ export function SessionTerminal({
         onStatusChange?.(session.id, message);
     }, [session.id, onStatusChange]);
 
+    const resizeTimeoutRef = useRef(null);
+
     const sendResize = useCallback(() => {
-        const term = termRef.current;
-        const ws = wsRef.current;
-        const container = termContainerRef.current;
+        if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
 
-        if (!isMountedRef.current) return;
+        resizeTimeoutRef.current = setTimeout(() => {
+            const term = termRef.current;
+            const ws = wsRef.current;
+            const container = termContainerRef.current;
 
-        if (!container || !term || !fitAddonRef.current) return;
+            if (!isMountedRef.current) return;
 
-        // Only fit if the container has dimensions (is visible)
-        if (container.clientWidth > 0 && container.clientHeight > 0) {
-            try {
-                // Check if terminal is actually mounted in DOM
-                if (!term.element || !term.element.isConnected) return;
+            if (!container || !term || !fitAddonRef.current) return;
 
-                fitAddonRef.current.fit();
+            // Only fit if the container has dimensions (is visible)
+            if (container.clientWidth > 0 && container.clientHeight > 0) {
+                try {
+                    // Check if terminal is actually mounted in DOM
+                    if (!term.element || !term.element.isConnected) return;
 
-                if (ws && ws.readyState === WebSocket.OPEN && !isPreview) {
-                    ws.send(JSON.stringify({
-                        type: 'resize',
-                        cols: term.cols,
-                        rows: term.rows,
-                        width: container.clientWidth,
-                        height: container.clientHeight,
-                    }));
+                    fitAddonRef.current.fit();
+
+                    if (ws && ws.readyState === WebSocket.OPEN && !isPreview) {
+                        ws.send(JSON.stringify({
+                            type: 'resize',
+                            cols: term.cols,
+                            rows: term.rows,
+                            width: container.clientWidth,
+                            height: container.clientHeight,
+                        }));
+                    }
+                } catch (e) {
+                    console.warn('Resize error:', e);
                 }
-            } catch (e) {
-                console.warn('Resize error:', e);
             }
-        }
-    }, []);
+        }, 100); // 100ms debounce for smooth resizing without thrashing
+    }, [isPreview]);
 
     // Initialize Terminal
     useEffect(() => {

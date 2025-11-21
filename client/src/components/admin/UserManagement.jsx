@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreHorizontal, Trash2, UserCog } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, UserCog, LogOut } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export function UserManagement() {
@@ -151,6 +151,13 @@ export function UserManagement() {
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 Delete
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="text-orange-400 hover:bg-orange-500/10 focus:bg-orange-500/10 cursor-pointer"
+                                                onClick={() => handleLogoutUser(user.id)}
+                                            >
+                                                <LogOut className="mr-2 h-4 w-4" />
+                                                Logout
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>

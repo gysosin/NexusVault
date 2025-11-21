@@ -161,16 +161,25 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
     if (!isSidebarExpanded) {
         return (
             <div className="space-y-1">
-                {sessions.map(session => (
-                    <SessionItem
-                        key={session.id}
-                        session={session}
-                        isActive={activeSessionId === session.id}
-                        onClick={() => onSwitchSession(session.id)}
-                        onClose={onCloseSession}
-                        isSidebarExpanded={isSidebarExpanded}
-                    />
-                ))}
+                <AnimatePresence mode="popLayout">
+                    {sessions.map(session => (
+                        <motion.div
+                            key={session.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <SessionItem
+                                session={session}
+                                isActive={activeSessionId === session.id}
+                                onClick={() => onSwitchSession(session.id)}
+                                onClose={onCloseSession}
+                                isSidebarExpanded={isSidebarExpanded}
+                            />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
         );
     }
@@ -196,16 +205,26 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
                         className="overflow-hidden"
                     >
                         <div className="pl-2 space-y-1 mt-1">
-                            {sessions.map(session => (
-                                <SessionItem
-                                    key={session.id}
-                                    session={session}
-                                    isActive={activeSessionId === session.id}
-                                    onClick={() => onSwitchSession(session.id)}
-                                    onClose={onCloseSession}
-                                    isSidebarExpanded={isSidebarExpanded}
-                                />
-                            ))}
+                            <AnimatePresence mode="popLayout">
+                                {sessions.map(session => (
+                                    <motion.div
+                                        key={session.id}
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <SessionItem
+                                            session={session}
+                                            isActive={activeSessionId === session.id}
+                                            onClick={() => onSwitchSession(session.id)}
+                                            onClose={onCloseSession}
+                                            isSidebarExpanded={isSidebarExpanded}
+                                        />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
                         </div>
                     </motion.div>
                 )}

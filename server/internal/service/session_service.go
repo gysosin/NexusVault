@@ -1,6 +1,7 @@
 package service
 
 import (
+	"go-server/internal/utils"
 	"sync"
 	"time"
 
@@ -95,6 +96,12 @@ func AddSession(s *Session) {
 	mu.Lock()
 	defer mu.Unlock()
 	sessions[s.ID] = s
+
+	// Broadcast session started event
+	NotificationHub.Broadcast(map[string]interface{}{
+		"type":    "session_started",
+		"session": s,
+	})
 }
 
 func GetSession(id string) *Session {
@@ -107,6 +114,50 @@ func RemoveSession(id string) {
 	mu.Lock()
 	defer mu.Unlock()
 	delete(sessions, id)
+
+	// Broadcast session terminated event
+	NotificationHub.Broadcast(map[string]interface{}{
+		"type":      "session_terminated",
+		"sessionId": id,
+	})
+}
+
+func GetAllSessions() []*Session {
+	mu.RLock()
+	defer mu.RUnlock()
+	var allSessions []*Session
+	for _, s := range sessions {
+		allSessions = append(allSessions, s)
+	}
+	return allSessions
+}
+
+func CloseSession(id string) {
+	utils.Log("CloseSession called for ID:", id)
+	s := GetSession(id)
+	if s == nil {
+		utils.Log("CloseSession: Session not found for ID:", id)
+		return
+	}
+	utils.Log("CloseSession: Closing session:", id)
+
+	// Close WebSockets
+	s.SocketsMutex.Lock()
+	for ws := range s.Sockets {
+		ws.Close()
+	}
+	s.Sockets = nil
+	s.SocketsMutex.Unlock()
+
+	// Close SSH/RDP clients
+	if s.SSHClient != nil {
+		s.SSHClient.Close()
+	}
+	if s.RDPClient != nil {
+		s.RDPClient.Close()
+	}
+
+	RemoveSession(id)
 }
 
 func GetSessionsForUser(userID int) []*Session {

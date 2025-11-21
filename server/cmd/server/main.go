@@ -17,6 +17,14 @@ func main() {
 	db.InitDb()
 	db.InitRedis()
 
+	// Cleanup stale sessions
+	_, err := db.DB.Exec("UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE end_time IS NULL")
+	if err != nil {
+		utils.Log("Failed to cleanup stale sessions: " + err.Error())
+	} else {
+		utils.Log("Cleaned up stale sessions")
+	}
+
 	r := gin.Default()
 
 	// Middleware
@@ -65,13 +73,15 @@ func main() {
 			admin.DELETE("/roles/:id", apiPkg.DeleteRole)
 			admin.GET("/stats", apiPkg.GetAdminStats)
 			admin.GET("/activity", apiPkg.GetActivityLogs)
+			admin.GET("/sessions", apiPkg.GetAllActiveSessions)
+			admin.DELETE("/sessions/:id", apiPkg.TerminateSession)
+			admin.POST("/users/:id/logout", apiPkg.LogoutUser)
 		}
 	}
 
 	// WebSocket
-	r.GET("/ws", func(c *gin.Context) {
-		wsPkg.HandleWebSocket(c)
-	})
+	r.GET("/ws", wsPkg.HandleWebSocket)
+	r.GET("/ws/notifications", wsPkg.HandleNotifications)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{

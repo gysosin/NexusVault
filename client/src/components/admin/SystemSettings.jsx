@@ -29,7 +29,7 @@ export function SystemSettings() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setSettings(data);
+                setSettings(prev => ({ ...prev, ...data }));
             }
         } catch (err) {
             console.error('Failed to fetch settings', err);

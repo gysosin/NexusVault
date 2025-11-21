@@ -5,7 +5,8 @@ import { RoleManagement } from './RoleManagement';
 import { ActivityLog } from './ActivityLog';
 import { AdminDashboard } from './AdminDashboard';
 import { SystemSettings } from './SystemSettings';
-import { Shield, Users, Activity, LayoutDashboard, Settings } from 'lucide-react';
+import { SessionManagement } from './SessionManagement';
+import { Shield, Users, Activity, LayoutDashboard, Settings, Power } from 'lucide-react';
 
 export function AdminPanel() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -20,7 +21,7 @@ export function AdminPanel() {
             </div>
 
             <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
+                <TabsList className="grid w-full grid-cols-6 lg:w-[800px]">
                     <TabsTrigger value="overview" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Overview
@@ -36,6 +37,10 @@ export function AdminPanel() {
                     <TabsTrigger value="activity" className="flex items-center gap-2">
                         <Activity className="h-4 w-4" />
                         Activity
+                    </TabsTrigger>
+                    <TabsTrigger value="sessions" className="flex items-center gap-2">
+                        <Power className="h-4 w-4" />
+                        Sessions
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
@@ -57,6 +62,10 @@ export function AdminPanel() {
 
                 <TabsContent value="activity" className="space-y-4">
                     <ActivityLog />
+                </TabsContent>
+
+                <TabsContent value="sessions" className="space-y-4">
+                    <SessionManagement />
                 </TabsContent>
 
                 <TabsContent value="settings" className="space-y-4">

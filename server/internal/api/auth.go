@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
 	"go-server/internal/db"
 	"go-server/internal/models"
 	"go-server/internal/utils"
+
+	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -53,6 +54,8 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to create account."})
 		return
 	}
+
+	utils.LogActivity(nil, "Register", user.Username, "Success", nil)
 
 	c.JSON(http.StatusCreated, gin.H{"user": user})
 }
@@ -105,7 +108,8 @@ func Login(c *gin.Context) {
 		// Continue anyway? Or fail? Node.js logs it.
 	}
 
-	// Log activity (omitted for brevity, but should be added)
+	// Log activity
+	utils.LogActivity(&user.ID, "Login", "System", "Success", nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token":     token,

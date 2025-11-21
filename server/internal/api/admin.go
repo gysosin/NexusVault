@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
 	"go-server/internal/db"
 	"go-server/internal/models"
+	"go-server/internal/service"
+	"go-server/internal/utils"
+
+	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -86,6 +89,9 @@ func UpdateSystemSettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit changes"})
 		return
 	}
+
+	userID := c.GetInt("userId")
+	utils.LogActivity(&userID, "Update Settings", "System", "Success", req)
 
 	GetSystemSettings(c)
 }
@@ -208,6 +214,9 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetInt("userId")
+	utils.LogActivity(&userID, "Create User", user.Username, "Success", nil)
+
 	c.JSON(http.StatusCreated, user)
 }
 
@@ -268,6 +277,9 @@ func UpdateUserRole(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user role"})
 		return
 	}
+
+	userID := c.GetInt("userId")
+	utils.LogActivity(&userID, "Update Role", user.Username, "Success", map[string]string{"role": req.Role})
 
 	c.JSON(http.StatusOK, user)
 }
@@ -358,4 +370,105 @@ func DeleteRole(c *gin.Context) {
 // PromoteUser (Example admin action)
 func PromoteUser(c *gin.Context) {
 	c.Status(http.StatusNotImplemented)
+}
+
+func LogoutUser(c *gin.Context) {
+	if !ensureAdmin(c) {
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Invalidate sessions in Redis
+	// We need to find keys for this user.
+	// Redis keys are session:token. Value is userID.
+	// This is inefficient without a reverse index or scanning.
+	// For now, let's scan.
+	var keys []string
+	iter := db.Redis.Scan(context.Background(), 0, "session:*", 0).Iterator()
+	for iter.Next(context.Background()) {
+		key := iter.Val()
+		val, err := db.Redis.Get(context.Background(), key).Int()
+		if err == nil && val == id {
+			keys = append(keys, key)
+		}
+	}
+
+	if len(keys) > 0 {
+		db.Redis.Del(context.Background(), keys...)
+	}
+
+	adminID := c.GetInt("userId")
+	utils.LogActivity(&adminID, "Logout User", idStr, "Success", nil)
+
+	c.JSON(http.StatusOK, gin.H{"message": "User logged out", "sessionsRevoked": len(keys)})
+}
+
+func GetAllActiveSessions(c *gin.Context) {
+	if !ensureAdmin(c) {
+		return
+	}
+
+	sessions := service.GetAllSessions()
+
+	type AdminSessionResponse struct {
+		ID           string `json:"ID"`
+		Host         string `json:"Host"`
+		Username     string `json:"Username"`
+		Port         int    `json:"Port"`
+		ConnectionID *int   `json:"ConnectionID"`
+		Protocol     string `json:"Protocol"`
+		Type         string `json:"Type"`
+		CreatedAt    string `json:"CreatedAt"`
+		LastActivity string `json:"LastActivity"`
+	}
+
+	var response []AdminSessionResponse
+	for _, s := range sessions {
+		response = append(response, AdminSessionResponse{
+			ID:           s.ID,
+			Host:         s.Host,
+			Username:     s.Username,
+			Port:         s.Port,
+			ConnectionID: s.ConnectionID,
+			Protocol:     string(s.Type),
+			Type:         string(s.Type),
+			CreatedAt:    s.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+			LastActivity: s.LastActivity.Format("2006-01-02T15:04:05.000Z"),
+		})
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func TerminateSession(c *gin.Context) {
+	if !ensureAdmin(c) {
+		return
+	}
+
+	sessionID := c.Param("id")
+	utils.Log("TerminateSession called for ID:", sessionID)
+	service.CloseSession(sessionID)
+
+	// Update DB history
+	result, err := db.DB.Exec("UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE session_id = $1 AND end_time IS NULL", sessionID)
+	if err != nil {
+		utils.Log("Failed to update session history:", err)
+	} else {
+		rows, _ := result.RowsAffected()
+		utils.Log("Updated session history for ID:", sessionID, "Rows affected:", rows)
+	}
+	if err != nil {
+		utils.Log("Failed to update session history for termination:", err)
+	}
+
+	adminID := c.GetInt("userId")
+	utils.LogActivity(&adminID, "Terminate Session", sessionID, "Success", nil)
+
+	c.Status(http.StatusNoContent)
 }

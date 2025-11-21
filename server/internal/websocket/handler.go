@@ -208,7 +208,11 @@ func HandleWebSocket(c *gin.Context) {
 			currentSessionID = sessionID
 
 			// Record history
-			// ...
+			_, err = db.DB.Exec(`INSERT INTO session_histories (session_id, user_id, connection_id, host, username, start_time, status) VALUES ($1, $2, $3, $4, $5, NOW(), 'active')`,
+				session.ID, session.UserID, session.ConnectionID, session.Host, session.Username)
+			if err != nil {
+				utils.Log("Failed to record session history:", err)
+			}
 
 			// Send metadata
 			sendJSON(gin.H{
@@ -363,6 +367,31 @@ func HandleWebSocket(c *gin.Context) {
 				sendJSON(gin.H{"type": "status", "message": "Disconnecting session."})
 				currentSessionID = ""
 			}
+		}
+	}
+}
+
+// HandleNotifications manages the WebSocket connection for system notifications
+func HandleNotifications(c *gin.Context) {
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		utils.Log("Failed to upgrade to WebSocket:", err)
+		return
+	}
+	safeWs := service.NewSafeConn(ws)
+	// Do not defer close here immediately, managed by hub or loop
+
+	service.NotificationHub.AddSubscriber(safeWs)
+
+	defer func() {
+		service.NotificationHub.RemoveSubscriber(safeWs)
+		safeWs.Close()
+	}()
+
+	// Keep connection alive and read (ignore) messages until close
+	for {
+		if _, _, err := safeWs.ReadMessage(); err != nil {
+			break
 		}
 	}
 }

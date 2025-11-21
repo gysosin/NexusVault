@@ -129,13 +129,62 @@ export const SessionProvider = ({ children }) => {
     }, [token, prunePersistedSessionIds, replacePersistedSessionIds]);
 
     useEffect(() => {
-        if (token) {
-            fetchActiveSessions();
-        } else {
+        if (!token) {
             setSessions([]);
             setActiveSessionId(null);
             replacePersistedSessionIds(new Set());
+            return;
         }
+
+        fetchActiveSessions();
+
+        // WebSocket for notifications
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = (import.meta.env.DEV && import.meta.env.VITE_SERVER_PORT)
+            ? `localhost:${import.meta.env.VITE_SERVER_PORT}`
+            : window.location.host;
+        const wsUrl = `${protocol}//${host}/ws/notifications`;
+
+        let ws = null;
+        let reconnectTimeout = null;
+
+        const connect = () => {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('Notification WS connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'session_started') {
+                        fetchActiveSessions(); // Refresh to get full details
+                    } else if (msg.type === 'session_terminated') {
+                        const terminatedId = msg.sessionId;
+                        setSessions(prev => prev.filter(s => s.id !== terminatedId && s.serverId !== terminatedId));
+                        // Also update active session if needed
+                        if (activeSessionId === terminatedId) {
+                            setActiveSessionId(null); // Or select another
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse notification:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Notification WS disconnected, reconnecting...');
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (ws) ws.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        };
     }, [token, fetchActiveSessions, replacePersistedSessionIds]);
 
     const createSession = useCallback((connectionDetails) => {

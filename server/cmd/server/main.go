@@ -79,6 +79,8 @@ func main() {
 		})
 	})
 
+	r.GET("/api/health", apiPkg.GetHealthStatus)
+
 	port := config.Envs.Port
 	utils.Log("Server running on port " + port)
 	if err := r.Run(":" + port); err != nil {

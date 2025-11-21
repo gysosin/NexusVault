@@ -12,7 +12,8 @@ import {
     ChevronRight,
     Shield,
     LayoutDashboard,
-    Map
+    Map,
+    Activity
 } from 'lucide-react';
 
 const quickLinks = [
@@ -80,6 +81,20 @@ export function Sidebar({ collapsed, onToggle, view, setView, user }) {
                     >
                         <Map size={20} />
                         {!collapsed && <span>Roadmap</span>}
+                    </Button>
+
+                    <Button
+                        variant={view === 'status' ? 'secondary' : 'ghost'}
+                        className={cn(
+                            "w-full flex items-center gap-3 transition-colors",
+                            collapsed ? 'justify-center px-0 h-12 w-12 mx-auto rounded-xl' : 'justify-start px-4 h-10 rounded-lg',
+                            view === 'status' ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white hover:bg-white/5'
+                        )}
+                        onClick={() => setView('status')}
+                        title="System Status"
+                    >
+                        <Activity size={20} />
+                        {!collapsed && <span>Status</span>}
                     </Button>
 
                     {user?.role === 'admin' && (

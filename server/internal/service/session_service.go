@@ -17,16 +17,17 @@ const (
 )
 
 type Session struct {
-	ID           string
-	UserID       int
-	ConnectionID *int
-	Host         string
-	Port         int
-	Username     string
-	Password     string // Keep for RDP reconnect/resize? Or SSH?
-	Type         SessionType
-	CreatedAt    time.Time
-	LastActivity time.Time
+	ID             string
+	UserID         int
+	ConnectionID   *int
+	Host           string
+	Port           int
+	Username       string
+	Password       string // Keep for RDP reconnect/resize? Or SSH?
+	Type           SessionType
+	CreatedAt      time.Time
+	LastActivity   time.Time
+	RestoreHistory bool
 
 	// RDP lifecycle coordination
 	RDPConnMu       sync.Mutex

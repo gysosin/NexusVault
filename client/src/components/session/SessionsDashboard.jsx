@@ -95,7 +95,7 @@ function SessionCard({ session, onClick, previewMode }) {
         >
             <CardHeader className="p-4 pb-2 border-b border-white/5 bg-white/5 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${session.status === 'Connected' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${(session.status === 'Connected' || session.status === 'Session resumed.' || session.status === 'Connected to host.') ? 'bg-green-400' : 'bg-yellow-400'}`} />
                     <CardTitle className="text-sm font-mono truncate text-gray-300">
                         {`Session #${(session.serverId || session.id || '').slice(-4) || '----'}`}
                     </CardTitle>

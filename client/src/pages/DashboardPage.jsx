@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useSession } from '../context/SessionContext';
 import * as connectionApi from '../api/connections';
 
@@ -13,6 +14,7 @@ export const DashboardPage = ({ setView }) => {
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
     const [pendingConnection, setPendingConnection] = useState(null);
     const [connectionPassword, setConnectionPassword] = useState('');
+    const [restoreHistory, setRestoreHistory] = useState(false);
 
     const fetchConnections = useCallback(async () => {
         try {
@@ -46,14 +48,10 @@ export const DashboardPage = ({ setView }) => {
     };
 
     const initiateConnection = (connection) => {
-        if (connection.password || connection.hasPassword) {
-            createSession(connection);
-            setView('terminal');
-        } else {
-            setPendingConnection(connection);
-            setConnectionPassword('');
-            setPasswordDialogOpen(true);
-        }
+        setPendingConnection(connection);
+        setConnectionPassword('');
+        setRestoreHistory(false);
+        setPasswordDialogOpen(true);
     };
 
     const confirmConnection = (e) => {
@@ -62,6 +60,7 @@ export const DashboardPage = ({ setView }) => {
             createSession({
                 ...pendingConnection,
                 password: connectionPassword,
+                restoreHistory: restoreHistory,
             });
             setPasswordDialogOpen(false);
             setView('terminal');
@@ -82,20 +81,38 @@ export const DashboardPage = ({ setView }) => {
             <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
                 <DialogContent className="bg-brand-surface border-brand-border text-white">
                     <DialogHeader>
-                        <DialogTitle>Enter Password</DialogTitle>
+                        <DialogTitle>Connection Options</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={confirmConnection}>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
                                 <Label>Connect to {pendingConnection?.username}@{pendingConnection?.host}</Label>
-                                <Input
-                                    type="password"
-                                    value={connectionPassword}
-                                    onChange={(e) => setConnectionPassword(e.target.value)}
-                                    placeholder="SSH Password"
-                                    className="bg-white/5 border-white/10"
-                                    autoFocus
-                                />
+                                {(!pendingConnection?.password && !pendingConnection?.hasPassword) && (
+                                    <Input
+                                        type="password"
+                                        value={connectionPassword}
+                                        onChange={(e) => setConnectionPassword(e.target.value)}
+                                        placeholder="SSH Password"
+                                        className="bg-white/5 border-white/10"
+                                        autoFocus
+                                    />
+                                )}
+                                {pendingConnection?.type !== 'rdp' && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <Checkbox
+                                            id="restoreHistory"
+                                            checked={restoreHistory}
+                                            onCheckedChange={setRestoreHistory}
+                                            className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                        />
+                                        <label
+                                            htmlFor="restoreHistory"
+                                            className="text-sm font-medium leading-none text-gray-300 cursor-pointer select-none"
+                                        >
+                                            Restore previous session history
+                                        </label>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <DialogFooter>

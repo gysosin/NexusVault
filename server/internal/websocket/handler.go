@@ -26,19 +26,20 @@ type WSMessage struct {
 	Payload string          `json:"payload,omitempty"` // Encrypted payload for connect
 	Data    json.RawMessage `json:"data,omitempty"`    // For other messages
 	// Fields for direct binding if not encrypted/nested
-	Token        string `json:"token,omitempty"`
-	SessionID    string `json:"sessionId,omitempty"`
-	ID           string `json:"id,omitempty"` // Alias for SessionID in resume
-	ConnectionID int    `json:"connectionId,omitempty"`
-	Host         string `json:"host,omitempty"`
-	Username     string `json:"username,omitempty"`
-	Password     string `json:"password,omitempty"`
-	Port         int    `json:"port,omitempty"`
-	Protocol     string `json:"protocol,omitempty"` // ssh | rdp
-	Width        int    `json:"width,omitempty"`
-	Height       int    `json:"height,omitempty"`
-	Rows         int    `json:"rows,omitempty"`
-	Cols         int    `json:"cols,omitempty"`
+	Token          string `json:"token,omitempty"`
+	SessionID      string `json:"sessionId,omitempty"`
+	ID             string `json:"id,omitempty"` // Alias for SessionID in resume
+	ConnectionID   int    `json:"connectionId,omitempty"`
+	Host           string `json:"host,omitempty"`
+	Username       string `json:"username,omitempty"`
+	Password       string `json:"password,omitempty"`
+	Port           int    `json:"port,omitempty"`
+	Protocol       string `json:"protocol,omitempty"` // ssh | rdp
+	Width          int    `json:"width,omitempty"`
+	Height         int    `json:"height,omitempty"`
+	Rows           int    `json:"rows,omitempty"`
+	Cols           int    `json:"cols,omitempty"`
+	RestoreHistory bool   `json:"restoreHistory,omitempty"`
 }
 
 // HandleWebSocket manages the WebSocket connection
@@ -111,6 +112,7 @@ func HandleWebSocket(c *gin.Context) {
 				msg.ConnectionID = payloadData.ConnectionID
 				msg.Width = payloadData.Width
 				msg.Height = payloadData.Height
+				msg.RestoreHistory = payloadData.RestoreHistory
 				// Decrypted payload uses "type" for protocol (ssh/rdp)
 				if msg.Protocol == "" && payloadData.Type != "" {
 					msg.Protocol = payloadData.Type
@@ -180,17 +182,18 @@ func HandleWebSocket(c *gin.Context) {
 			// Create Session
 			sessionID := uuid.New().String()
 			session := &service.Session{
-				ID:           sessionID,
-				UserID:       claims.UserID,
-				ConnectionID: &msg.ConnectionID,
-				Host:         msg.Host,
-				Port:         msg.Port,
-				Username:     msg.Username,
-				Password:     msg.Password,
-				Type:         service.SessionTypeSSH, // default, override below
-				CreatedAt:    time.Now(),
-				LastActivity: time.Now(),
-				Sockets:      make(map[*service.SafeConn]bool),
+				ID:             sessionID,
+				UserID:         claims.UserID,
+				ConnectionID:   &msg.ConnectionID,
+				Host:           msg.Host,
+				Port:           msg.Port,
+				Username:       msg.Username,
+				Password:       msg.Password,
+				Type:           service.SessionTypeSSH, // default, override below
+				CreatedAt:      time.Now(),
+				LastActivity:   time.Now(),
+				RestoreHistory: msg.RestoreHistory,
+				Sockets:        make(map[*service.SafeConn]bool),
 			}
 
 			// Set type based on protocol hint
@@ -270,11 +273,13 @@ func HandleWebSocket(c *gin.Context) {
 			sendJSON(gin.H{"type": "status", "message": "Session resumed."})
 
 			// Replay buffer
-			session.BufferMutex.Lock()
-			if session.Buffer != "" {
-				sendJSON(gin.H{"type": "data", "data": session.Buffer})
+			if session.RestoreHistory {
+				session.BufferMutex.Lock()
+				if session.Buffer != "" {
+					sendJSON(gin.H{"type": "data", "data": session.Buffer})
+				}
+				session.BufferMutex.Unlock()
 			}
-			session.BufferMutex.Unlock()
 
 		case "input", "data":
 			// Handle input

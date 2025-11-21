@@ -155,6 +155,7 @@ export const SessionProvider = ({ children }) => {
             title: `${connectionDetails.username}@${connectionDetails.host}`,
             status: 'Initializing...',
             serverId: null,
+            restoreHistory: connectionDetails.restoreHistory || false,
         };
 
         setSessions(prev => [...prev, session]);

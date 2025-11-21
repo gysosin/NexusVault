@@ -5,6 +5,7 @@ import (
 	"go-server/internal/config"
 	"go-server/internal/db"
 	"go-server/internal/middleware"
+	"go-server/internal/service"
 	"go-server/internal/utils"
 	wsPkg "go-server/internal/websocket"
 	"log"
@@ -16,6 +17,7 @@ func main() {
 	config.InitConfig()
 	db.InitDb()
 	db.InitRedis()
+	service.NotificationHub.InitRedisSub()
 
 	// Cleanup stale sessions
 	_, err := db.DB.Exec("UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE end_time IS NULL")

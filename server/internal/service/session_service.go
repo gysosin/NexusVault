@@ -18,41 +18,41 @@ const (
 )
 
 type Session struct {
-	ID             string
-	UserID         int
-	ConnectionID   *int
-	Host           string
-	Port           int
-	Username       string
-	Password       string // Keep for RDP reconnect/resize? Or SSH?
-	Type           SessionType
-	CreatedAt      time.Time
-	LastActivity   time.Time
-	RestoreHistory bool
+	ID             string      `json:"id"`
+	UserID         int         `json:"userId"`
+	ConnectionID   *int        `json:"connectionId"`
+	Host           string      `json:"host"`
+	Port           int         `json:"port"`
+	Username       string      `json:"username"`
+	Password       string      `json:"-"`
+	Type           SessionType `json:"type"`
+	CreatedAt      time.Time   `json:"createdAt"`
+	LastActivity   time.Time   `json:"lastActivity"`
+	RestoreHistory bool        `json:"restoreHistory"`
 
 	// RDP lifecycle coordination
-	RDPConnMu       sync.Mutex
-	RDPReconnecting bool
-	RDPLastResize   time.Time
+	RDPConnMu       sync.Mutex `json:"-"`
+	RDPReconnecting bool       `json:"rdpReconnecting"`
+	RDPLastResize   time.Time  `json:"rdpLastResize"`
 
 	// WebSocket connections (can be multiple for same session?)
 	// Node.js implementation supports multiple sockets per session (Set<WebSocket>)
-	Sockets      map[*SafeConn]bool
-	SocketsMutex sync.Mutex
+	Sockets      map[*SafeConn]bool `json:"-"`
+	SocketsMutex sync.Mutex         `json:"-"`
 
 	// Buffer for replay
-	Buffer      string
-	BufferMutex sync.Mutex
+	Buffer      string     `json:"buffer"`
+	BufferMutex sync.Mutex `json:"-"`
 
 	// SSH specific
-	SSHClient    *ssh.Client
-	ShellSession *ssh.Session
-	Stdin        func(string) error // Helper to write to stdin
+	SSHClient    *ssh.Client        `json:"-"`
+	ShellSession *ssh.Session       `json:"-"`
+	Stdin        func(string) error `json:"-"`
 
 	// RDP specific
-	RDPClient *client.Client
-	Width     int
-	Height    int
+	RDPClient *client.Client `json:"-"`
+	Width     int            `json:"width"`
+	Height    int            `json:"height"`
 }
 
 // SafeConn wraps websocket.Conn to ensure thread-safe writes

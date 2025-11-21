@@ -276,7 +276,8 @@ export function SessionTerminal({
                     password: session.password,
                     port: session.port,
                     token: authToken,
-                    connectionId: session.connectionId
+                    connectionId: session.connectionId,
+                    restoreHistory: session.restoreHistory,
                 });
                 ws.send(JSON.stringify({ type: 'connect', payload: encrypted }));
             } else {
@@ -387,7 +388,7 @@ export function SessionTerminal({
             {/* Terminal Header/Toolbar */}
             <div className="h-10 bg-[#0d1117] border-b border-white/5 flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${status === 'Connected' ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-yellow-400'}`} />
+                    <div className={`w-2 h-2 rounded-full ${(status === 'Connected' || status === 'Session resumed.' || status === 'Connected to host.') ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-yellow-400'}`} />
                     <span className="text-sm font-medium text-gray-300">{session.username}@{session.host}</span>
                     <span className="text-xs text-gray-600 font-mono px-2 py-0.5 bg-white/5 rounded">{status}</span>
                 </div>

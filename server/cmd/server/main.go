@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	println("Starting server...")
 	config.InitConfig()
 	db.InitDb()
 	db.InitRedis()

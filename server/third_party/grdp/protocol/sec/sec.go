@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"math/big"
 	"unicode/utf16"
 
 	"github.com/lunixbochs/struc"
@@ -667,23 +666,13 @@ func (c *Client) sendClientRandom() {
 		glog.Warn("Cannot verify server identity")
 	}
 
-	ePublicKey, mPublicKey := c.ServerSecurityData().ServerCertificate.CertData.GetPublicKey()
-	b := new(big.Int).SetBytes(core.Reverse(mPublicKey))
-	e := new(big.Int).SetInt64(int64(ePublicKey))
-	d := new(big.Int).SetBytes(core.Reverse(clientRandom))
-	r := new(big.Int).Exp(d, e, b)
-	var ret []byte
-	if len(b.Bytes()) > 0 && len(r.Bytes()) > len(b.Bytes()) {
-		ret = r.Bytes()[:len(b.Bytes())]
-	} else {
-		ln := len(r.Bytes())
-		if ln < 1 {
-			ln = 1
-		}
-		ret = r.Bytes()[:ln]
+	ret, err := c.ServerSecurityData().ServerCertificate.CertData.Encrypt(clientRandom)
+	if err != nil {
+		glog.Error("Encrypt clientRandom failed:", err)
+		return
 	}
 	message := ClientSecurityExchangePDU{}
-	message.EncryptedClientRandom = core.Reverse(ret)
+	message.EncryptedClientRandom = ret
 	message.Length = uint32(len(message.EncryptedClientRandom) + 8)
 	message.Padding = make([]byte, 8)
 
@@ -777,22 +766,12 @@ func (c *Client) sendClientNewLicenseRequest(data []byte) {
 
 	buff := &bytes.Buffer{}
 
-	ePublicKey, mPublicKey := sc.CertData.GetPublicKey()
-	b := new(big.Int).SetBytes(core.Reverse(mPublicKey))
-	e := new(big.Int).SetInt64(int64(ePublicKey))
-	d := new(big.Int).SetBytes(core.Reverse(clientRandom))
-	r := new(big.Int).Exp(d, e, b)
-	var ret []byte
-	if len(b.Bytes()) > 0 {
-		ret = r.Bytes()[:len(b.Bytes())]
-	} else {
-		ln := len(r.Bytes())
-		if ln < 1 {
-			ln = 1
-		}
-		ret = r.Bytes()[:ln]
+	ret, err := sc.CertData.Encrypt(clientRandom)
+	if err != nil {
+		glog.Error("Encrypt clientRandom failed:", err)
+		return
 	}
-	buff.Write(core.Reverse(ret))
+	buff.Write(ret)
 	buff.Write([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 	message.EncryptedPreMasterSecret.BlobData = buff.Bytes()
 
@@ -809,7 +788,7 @@ func (c *Client) sendClientNewLicenseRequest(data []byte) {
 	buff.Reset()
 	struc.Pack(buff, message)
 
-	c.sendFlagged(LICENSE_PKT, b.Bytes())
+	c.sendFlagged(LICENSE_PKT, buff.Bytes())
 
 }
 

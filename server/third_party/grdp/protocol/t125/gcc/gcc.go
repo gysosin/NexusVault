@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math/big"
 	"os"
 
 	"github.com/tomatome/grdp/plugin"
@@ -403,10 +404,11 @@ func (p *ProprietaryServerCertificate) Verify() bool {
 	//todo
 	return true
 }
-func (p *ProprietaryServerCertificate) Encrypt() []byte {
-	//todo
-	return nil
+func (p *ProprietaryServerCertificate) Encrypt(data []byte) ([]byte, error) {
+	e, m := p.GetPublicKey()
+	return rsaEncrypt(e, m, data)
 }
+
 func (p *ProprietaryServerCertificate) Unpack(r io.Reader) error {
 	p.DwSigAlgId, _ = core.ReadUInt32LE(r)
 	p.DwKeyAlgId, _ = core.ReadUInt32LE(r)
@@ -446,10 +448,9 @@ func (p *X509CertificateChain) GetPublicKey() (uint32, []byte) {
 func (p *X509CertificateChain) Verify() bool {
 	return true
 }
-func (p *X509CertificateChain) Encrypt() []byte {
-
-	//todo
-	return nil
+func (p *X509CertificateChain) Encrypt(data []byte) ([]byte, error) {
+	e, m := p.GetPublicKey()
+	return rsaEncrypt(e, m, data)
 }
 func (p *X509CertificateChain) Unpack(r io.Reader) error {
 	return struc.Unpack(r, p)
@@ -493,9 +494,40 @@ func (d *ServerNetworkData) Unpack(r io.Reader) error {
 	return struc.Unpack(r, d)
 }
 
+func rsaEncrypt(ePublicKey uint32, mPublicKey []byte, data []byte) ([]byte, error) {
+	// Make copies to avoid modifying original slices with core.Reverse
+	mBytes := make([]byte, len(mPublicKey))
+	copy(mBytes, mPublicKey)
+	b := new(big.Int).SetBytes(core.Reverse(mBytes))
+
+	e := new(big.Int).SetInt64(int64(ePublicKey))
+
+	dBytes := make([]byte, len(data))
+	copy(dBytes, data)
+	d := new(big.Int).SetBytes(core.Reverse(dBytes))
+
+	r := new(big.Int).Exp(d, e, b)
+
+	var ret []byte
+	bLen := len(b.Bytes())
+	rBytes := r.Bytes()
+	if bLen > 0 && len(rBytes) > bLen {
+		ret = rBytes[:bLen]
+	} else {
+		ln := len(rBytes)
+		if ln < 1 {
+			ln = 1
+		}
+		ret = rBytes[:ln]
+	}
+
+	return core.Reverse(ret), nil
+}
+
 type CertData interface {
 	GetPublicKey() (uint32, []byte)
 	Verify() bool
+	Encrypt(data []byte) ([]byte, error)
 	Unpack(io.Reader) error
 }
 type ServerCertificate struct {

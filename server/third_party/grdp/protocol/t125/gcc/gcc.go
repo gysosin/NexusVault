@@ -2,6 +2,8 @@ package gcc
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"io"
 	"os"
@@ -440,8 +442,25 @@ type X509CertificateChain struct {
 }
 
 func (p *X509CertificateChain) GetPublicKey() (uint32, []byte) {
-	//todo
-	return 0, nil
+	if len(p.CertBlobArray) == 0 {
+		return 0, nil
+	}
+
+	// The Terminal Server Certificate is the last certificate in the chain.
+	certBlob := p.CertBlobArray[len(p.CertBlobArray)-1]
+	cert, err := x509.ParseCertificate(certBlob.AbCert)
+	if err != nil {
+		glog.Errorf("Failed to parse X509 certificate: %v", err)
+		return 0, nil
+	}
+
+	pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		glog.Error("Public key is not RSA")
+		return 0, nil
+	}
+
+	return uint32(pubKey.E), pubKey.N.Bytes()
 }
 func (p *X509CertificateChain) Verify() bool {
 	return true

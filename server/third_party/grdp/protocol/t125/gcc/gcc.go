@@ -2,8 +2,11 @@ package gcc
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/binary"
 	"errors"
 	"io"
+	"math/big"
 	"os"
 
 	"github.com/tomatome/grdp/plugin"
@@ -400,7 +403,61 @@ func (p *ProprietaryServerCertificate) GetPublicKey() (uint32, []byte) {
 	return p.PublicKeyBlob.PubExp, p.PublicKeyBlob.Modulus
 }
 func (p *ProprietaryServerCertificate) Verify() bool {
-	//todo
+	// 1. Serialize data to be signed
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, p.DwSigAlgId)
+	binary.Write(buf, binary.LittleEndian, p.DwKeyAlgId)
+	binary.Write(buf, binary.LittleEndian, p.PublicKeyBlobType)
+	binary.Write(buf, binary.LittleEndian, p.PublicKeyBlobLen)
+
+	// PublicKeyBlob
+	pk := p.PublicKeyBlob
+	binary.Write(buf, binary.LittleEndian, pk.Magic)
+	binary.Write(buf, binary.LittleEndian, pk.Keylen)
+	binary.Write(buf, binary.LittleEndian, pk.Bitlen)
+	binary.Write(buf, binary.LittleEndian, pk.Datalen)
+	binary.Write(buf, binary.LittleEndian, pk.PubExp)
+	buf.Write(pk.Modulus)
+	buf.Write(pk.Padding)
+
+	// 2. Compute MD5 Hash
+	hash := md5.Sum(buf.Bytes())
+
+	// 3. Prepare RSA Public Key from certificate
+	// Modulus is LE, convert to BE for math/big
+	modBytes := make([]byte, len(pk.Modulus))
+	copy(modBytes, pk.Modulus)
+	core.Reverse(modBytes)
+	modulus := new(big.Int).SetBytes(modBytes)
+
+	pubExp := int(pk.PubExp)
+	// Usually exponent is small (65537 or 3), so int is fine.
+
+	// 4. Decrypt Signature
+	// SignatureBlob is LE, convert to BE
+	sigBytes := make([]byte, len(p.SignatureBlob))
+	copy(sigBytes, p.SignatureBlob)
+	core.Reverse(sigBytes)
+	signature := new(big.Int).SetBytes(sigBytes)
+
+	// Decrypt: m = s^e mod n
+	decrypted := new(big.Int).Exp(signature, big.NewInt(int64(pubExp)), modulus)
+
+	// 5. Verify Hash
+	// The decrypted number (LE) should match the hash (LE) + padding.
+	// Since padding is usually 0x00, the number should match the hash bytes interpreted as a number.
+
+	// Convert hash (bytes) to number (LE -> BE)
+	hashBytes := make([]byte, len(hash))
+	copy(hashBytes, hash[:])
+	core.Reverse(hashBytes) // LE -> BE for big.Int
+	hashInt := new(big.Int).SetBytes(hashBytes)
+
+	if decrypted.Cmp(hashInt) != 0 {
+		glog.Error("ProprietaryServerCertificate verification failed")
+		return false
+	}
+
 	return true
 }
 func (p *ProprietaryServerCertificate) Encrypt() []byte {

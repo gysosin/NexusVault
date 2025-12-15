@@ -2,6 +2,8 @@ package gcc
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"io"
 	"os"
@@ -440,15 +442,34 @@ type X509CertificateChain struct {
 }
 
 func (p *X509CertificateChain) GetPublicKey() (uint32, []byte) {
-	//todo
-	return 0, nil
+	if len(p.CertBlobArray) == 0 {
+		return 0, nil
+	}
+
+	// [MS-RDPBCGR] 5.3.3.2 X.509 Certificate Chains
+	// "An X.509 Certificate Chain consists of a collection of certificates concatenated together in root-certificate-first order.
+	// ... The last certificate is the certificate of the server"
+	// So we should take the last element of the array.
+	certData := p.CertBlobArray[len(p.CertBlobArray)-1].AbCert
+	cert, err := x509.ParseCertificate(certData)
+	if err != nil {
+		glog.Error("Failed to parse X509 certificate:", err)
+		return 0, nil
+	}
+
+	rsaPub, ok := cert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		glog.Error("Certificate public key is not RSA")
+		return 0, nil
+	}
+
+	return uint32(rsaPub.E), core.Reverse(rsaPub.N.Bytes())
 }
 func (p *X509CertificateChain) Verify() bool {
 	return true
 }
 func (p *X509CertificateChain) Encrypt() []byte {
-
-	//todo
+	// Not used for X509CertificateChain in RDP
 	return nil
 }
 func (p *X509CertificateChain) Unpack(r io.Reader) error {

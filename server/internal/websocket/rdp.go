@@ -170,68 +170,6 @@ func StartRDPSession(session *service.Session) error {
 		return err
 	}
 
-	// Register callbacks after login to avoid nil internals
-	rdpClient.OnError(func(err error) {
-		if err != nil {
-			utils.Log("RDP error:", err)
-			session.Broadcast(gin.H{"type": "error", "message": "RDP Connection Error: " + err.Error()})
-		}
-		cleanup("RDP connection ended.", rdpClient)
-	})
-
-	rdpClient.OnClose(func() {
-		cleanup("RDP connection closed.", rdpClient)
-	})
-
-	rdpClient.OnSuccess(func() {
-		session.Broadcast(gin.H{"type": "status", "message": "RDP authentication succeeded."})
-	})
-
-	rdpClient.OnReady(func() {
-		session.Broadcast(gin.H{"type": "status", "message": "RDP session ready."})
-		session.Broadcast(gin.H{"type": "rdp-size", "width": settings.Width, "height": settings.Height, "bpp": settings.ColorDepth})
-
-		// Force a refresh by sending a dummy input event sequence
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			if session.RDPClient != rdpClient {
-				return
-			}
-
-			// 1. Send a harmless key press (Left Shift)
-			rdpClient.KeyDown(0x2A, "ShiftLeft")
-			time.Sleep(50 * time.Millisecond)
-			rdpClient.KeyUp(0x2A, "ShiftLeft")
-
-			// 2. Move mouse to center and wiggle it
-			cx, cy := width/2, height/2
-			rdpClient.MouseMove(cx, cy)
-			time.Sleep(50 * time.Millisecond)
-			rdpClient.MouseMove(cx+10, cy+10)
-			time.Sleep(50 * time.Millisecond)
-			rdpClient.MouseMove(cx, cy)
-		}()
-	})
-
-	rdpClient.OnBitmap(func(bitmaps []client.Bitmap) {
-		for _, bm := range bitmaps {
-			// Binary frame format: [1 byte type][2 x][2 y][2 w][2 h][1 bpp][payload]
-			buf := make([]byte, 10+len(bm.Data))
-			buf[0] = 1
-			binary.LittleEndian.PutUint16(buf[1:], uint16(bm.DestLeft))
-			binary.LittleEndian.PutUint16(buf[3:], uint16(bm.DestTop))
-			binary.LittleEndian.PutUint16(buf[5:], uint16(bm.Width))
-			binary.LittleEndian.PutUint16(buf[7:], uint16(bm.Height))
-			if bm.BitsPerPixel > 0 {
-				buf[9] = byte(bm.BitsPerPixel)
-			} else {
-				buf[9] = 24
-			}
-			copy(buf[10:], bm.Data)
-			session.BroadcastBinary(buf)
-		}
-	})
-
 	session.Broadcast(gin.H{"type": "status", "message": "RDP connected. Waiting for display..."})
 	return nil
 }

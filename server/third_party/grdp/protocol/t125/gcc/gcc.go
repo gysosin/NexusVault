@@ -430,7 +430,6 @@ func (p *ProprietaryServerCertificate) Verify() bool {
 	core.Reverse(modBytes)
 	modulus := new(big.Int).SetBytes(modBytes)
 
-	pubExp := int(pk.PubExp)
 	// Usually exponent is small (65537 or 3), so int is fine.
 
 	// 4. Decrypt Signature
@@ -441,7 +440,7 @@ func (p *ProprietaryServerCertificate) Verify() bool {
 	signature := new(big.Int).SetBytes(sigBytes)
 
 	// Decrypt: m = s^e mod n
-	decrypted := new(big.Int).Exp(signature, big.NewInt(int64(pubExp)), modulus)
+	decrypted := new(big.Int).Exp(signature, big.NewInt(int64(pk.PubExp)), modulus)
 
 	// 5. Verify Hash
 	// The decrypted number (LE) should match the hash (LE) + padding.

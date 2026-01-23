@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"go-server/internal/utils"
 	"sync"
 	"time"
@@ -41,8 +43,7 @@ type Session struct {
 	SocketsMutex sync.Mutex         `json:"-"`
 
 	// Buffer for replay
-	Buffer      string     `json:"buffer"`
-	BufferMutex sync.Mutex `json:"-"`
+	Buffer *SafeBuffer `json:"buffer"`
 
 	// SSH specific
 	SSHClient    *ssh.Client        `json:"-"`
@@ -204,11 +205,44 @@ func (s *Session) BroadcastBinary(data []byte) {
 }
 
 func (s *Session) AppendBuffer(data string) {
-	s.BufferMutex.Lock()
-	defer s.BufferMutex.Unlock()
-	// Limit buffer size?
-	if len(s.Buffer) > 100000 {
-		s.Buffer = s.Buffer[len(s.Buffer)-100000:]
+	if s.Buffer != nil {
+		s.Buffer.Append(data)
 	}
-	s.Buffer += data
+}
+
+type SafeBuffer struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func NewSafeBuffer() *SafeBuffer {
+	return &SafeBuffer{}
+}
+
+func (sb *SafeBuffer) Append(data string) {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	sb.buf.WriteString(data)
+	if sb.buf.Len() > 100000 {
+		discard := sb.buf.Len() - 100000
+		sb.buf.Next(discard)
+	}
+}
+
+func (sb *SafeBuffer) String() string {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return sb.buf.String()
+}
+
+func (sb *SafeBuffer) Len() int {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return sb.buf.Len()
+}
+
+func (sb *SafeBuffer) MarshalJSON() ([]byte, error) {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return json.Marshal(sb.buf.String())
 }

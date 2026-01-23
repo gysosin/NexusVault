@@ -72,17 +72,10 @@ func UpdateSystemSettings(c *gin.Context) {
 		return
 	}
 
-	for key, val := range req {
-		valJSON, _ := json.Marshal(val)
-		if _, err := tx.Exec(`
-			INSERT INTO system_settings (key, value, updated_at) 
-			VALUES ($1, $2, NOW()) 
-			ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
-		`, key, valJSON); err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting: " + key})
-			return
-		}
+	if err := service.UpdateSystemSettings(tx, req); err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	if err := tx.Commit(); err != nil {

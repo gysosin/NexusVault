@@ -1,8 +1,10 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"go-server/internal/db"
 	"go-server/internal/models"
@@ -10,6 +12,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+const (
+	connectionTypeSSH = "ssh"
+	connectionTypeRDP = "rdp"
+	minPort           = 1
+	maxPort           = 65535
+)
+
+type normalizedConnectionFields struct {
+	Name     string
+	Host     string
+	Port     int
+	Username string
+	Type     string
+}
 
 type CreateConnectionRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -56,17 +73,10 @@ func CreateConnection(c *gin.Context) {
 		return
 	}
 
-	// Default port
-	if req.Port == 0 {
-		if req.Type == "rdp" {
-			req.Port = 3389
-		} else {
-			req.Port = 22
-		}
-	}
-
-	if req.Type == "" {
-		req.Type = "ssh"
+	fields, err := normalizeConnectionFields(req.Name, req.Host, req.Port, req.Username, req.Type)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	var encryptedPassword string
@@ -81,7 +91,7 @@ func CreateConnection(c *gin.Context) {
 
 	var conn models.Connection
 	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
-	err := db.DB.QueryRowx(query, userID, req.Name, req.Host, req.Port, req.Username, encryptedPassword, req.Type).StructScan(&conn)
+	err = db.DB.QueryRowx(query, userID, fields.Name, fields.Host, fields.Port, fields.Username, encryptedPassword, fields.Type).StructScan(&conn)
 
 	if err != nil {
 		utils.Log("Error creating connection", err)
@@ -144,6 +154,12 @@ func UpdateConnection(c *gin.Context) {
 		connType = existing.Type
 	}
 
+	fields, err := normalizeConnectionFields(name, host, port, username, connType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	password := existing.Password
 	if req.Password != "" {
 		encrypted, err := utils.Encrypt(req.Password)
@@ -156,7 +172,7 @@ func UpdateConnection(c *gin.Context) {
 
 	var updated models.Connection
 	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
-	err = db.DB.QueryRowx(query, name, host, port, username, password, connType, id, userID).StructScan(&updated)
+	err = db.DB.QueryRowx(query, fields.Name, fields.Host, fields.Port, fields.Username, password, fields.Type, id, userID).StructScan(&updated)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update connection"})
@@ -188,4 +204,46 @@ func DeleteConnection(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func normalizeConnectionFields(name, host string, port int, username, connType string) (normalizedConnectionFields, error) {
+	fields := normalizedConnectionFields{
+		Name:     strings.TrimSpace(name),
+		Host:     strings.TrimSpace(host),
+		Port:     port,
+		Username: strings.TrimSpace(username),
+		Type:     strings.ToLower(strings.TrimSpace(connType)),
+	}
+
+	if fields.Name == "" {
+		return normalizedConnectionFields{}, errors.New("name is required")
+	}
+	if fields.Host == "" {
+		return normalizedConnectionFields{}, errors.New("host is required")
+	}
+	if fields.Username == "" {
+		return normalizedConnectionFields{}, errors.New("username is required")
+	}
+
+	switch fields.Type {
+	case "":
+		fields.Type = connectionTypeSSH
+	case connectionTypeSSH, connectionTypeRDP:
+	default:
+		return normalizedConnectionFields{}, errors.New("type must be ssh or rdp")
+	}
+
+	if fields.Port == 0 {
+		if fields.Type == connectionTypeRDP {
+			fields.Port = 3389
+		} else {
+			fields.Port = 22
+		}
+	}
+
+	if fields.Port < minPort || fields.Port > maxPort {
+		return normalizedConnectionFields{}, errors.New("port must be between 1 and 65535")
+	}
+
+	return fields, nil
 }

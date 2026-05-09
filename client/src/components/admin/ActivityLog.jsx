@@ -7,6 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Search } from 'lucide-react';
 
+const CSV_FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+const escapeCsvCell = (value) => {
+    let cell = value == null ? '' : String(value);
+    if (CSV_FORMULA_PREFIX.test(cell)) {
+        cell = `'${cell}`;
+    }
+    return `"${cell.replace(/"/g, '""')}"`;
+};
+
 export function ActivityLog() {
     const [logs, setLogs] = useState([]);
     const [filteredLogs, setFilteredLogs] = useState([]);
@@ -55,14 +65,14 @@ export function ActivityLog() {
     const handleExport = () => {
         const headers = ['User', 'Action', 'Target', 'Status', 'Timestamp'];
         const csvContent = [
-            headers.join(','),
+            headers.map(escapeCsvCell).join(','),
             ...filteredLogs.map(log => [
                 log.username || 'System',
                 log.action,
                 log.target,
                 log.status,
                 new Date(log.created_at).toISOString()
-            ].join(','))
+            ].map(escapeCsvCell).join(','))
         ].join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });

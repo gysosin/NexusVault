@@ -60,3 +60,39 @@ func TestIsOriginAllowedAllowsConfiguredOrigin(t *testing.T) {
 		t.Fatal("expected configured origin to be allowed")
 	}
 }
+
+func TestIsOriginAllowedRejectsWildcardInProduction(t *testing.T) {
+	config.Envs = config.Config{
+		NodeEnv:        "production",
+		AllowedOrigins: "*",
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://vault.example/ws", nil)
+	if err != nil {
+		t.Fatalf("NewRequest() error = %v", err)
+	}
+	req.Host = "vault.example"
+	req.Header.Set("Origin", "https://evil.example")
+
+	if IsOriginAllowed(req) {
+		t.Fatal("expected wildcard origin to be rejected in production")
+	}
+}
+
+func TestIsOriginAllowedAllowsWildcardInDevelopment(t *testing.T) {
+	config.Envs = config.Config{
+		NodeEnv:        "development",
+		AllowedOrigins: "*",
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://vault.example/ws", nil)
+	if err != nil {
+		t.Fatalf("NewRequest() error = %v", err)
+	}
+	req.Host = "vault.example"
+	req.Header.Set("Origin", "https://preview.example")
+
+	if !IsOriginAllowed(req) {
+		t.Fatal("expected wildcard origin to be allowed in development")
+	}
+}

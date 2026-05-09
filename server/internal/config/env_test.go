@@ -37,9 +37,10 @@ func TestValidateAllowsDevelopmentDefaults(t *testing.T) {
 
 func TestValidateRequiresProductionDatabaseAndRedis(t *testing.T) {
 	cfg := Config{
-		NodeEnv:   "production",
-		JWTSecret: strings.Repeat("j", minProductionSecretLength),
-		APISecret: strings.Repeat("a", minProductionSecretLength),
+		NodeEnv:          "production",
+		JWTSecret:        strings.Repeat("j", minProductionSecretLength),
+		APISecret:        strings.Repeat("a", minProductionSecretLength),
+		CredentialSecret: strings.Repeat("c", minProductionSecretLength),
 	}
 
 	err := cfg.Validate()
@@ -48,5 +49,25 @@ func TestValidateRequiresProductionDatabaseAndRedis(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "DATABASE_URL") || !strings.Contains(err.Error(), "REDIS_URL") {
 		t.Fatalf("Validate() error = %q, want DATABASE_URL and REDIS_URL", err)
+	}
+}
+
+func TestValidateRequiresDistinctProductionCredentialSecret(t *testing.T) {
+	sharedSecret := strings.Repeat("s", minProductionSecretLength)
+	cfg := Config{
+		NodeEnv:          "production",
+		DatabaseURL:      "postgres://user:pass@localhost:5432/nexusvault?sslmode=disable",
+		RedisURL:         "redis://localhost:6379",
+		JWTSecret:        strings.Repeat("j", minProductionSecretLength),
+		APISecret:        sharedSecret,
+		CredentialSecret: sharedSecret,
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want distinct credential secret error")
+	}
+	if !strings.Contains(err.Error(), "CREDENTIAL_SECRET must be distinct") {
+		t.Fatalf("Validate() error = %q, want distinct credential secret error", err)
 	}
 }

@@ -213,6 +213,10 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if !isAssignableUserRole(req.Role) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported user role"})
+		return
+	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 	if err != nil {
@@ -281,6 +285,10 @@ func UpdateUserRole(c *gin.Context) {
 	var req updateUserRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if !isAssignableUserRole(req.Role) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported user role"})
 		return
 	}
 
@@ -425,6 +433,10 @@ func isSystemRole(id string) bool {
 	default:
 		return false
 	}
+}
+
+func isAssignableUserRole(role string) bool {
+	return isSystemRole(role)
 }
 
 func LogoutUser(c *gin.Context) {

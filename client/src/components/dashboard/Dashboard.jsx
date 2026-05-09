@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
 import { buildConnectionRiskSummary } from '@/lib/connectionRisk';
 import { getQuickLaunchMatches } from '@/lib/quickLaunch';
+import { buildProtocolUtilization } from '@/lib/protocolUtilization';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -97,6 +98,10 @@ export function Dashboard({
         () => getQuickLaunchMatches(connections, quickLaunchQuery, 5),
         [connections, quickLaunchQuery]
     );
+    const protocolUtilization = useMemo(
+        () => buildProtocolUtilization(connections),
+        [connections]
+    );
 
     const filtered = connections.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -138,6 +143,8 @@ export function Dashboard({
             <ConnectionHealthSnapshot summary={healthSummary} isLoading={isLoading} />
 
             <ConnectionRiskSummary summary={riskSummary} isLoading={isLoading} />
+
+            <ProtocolUtilizationChart rows={protocolUtilization} isLoading={isLoading} total={connections.length} />
 
             <RecentSessionTimeline
                 sessions={recentSessions}
@@ -398,6 +405,57 @@ function ConnectionRiskSummary({ summary, isLoading }) {
                                             {reason}
                                         </Badge>
                                     ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function ProtocolUtilizationChart({ rows, isLoading, total }) {
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <MonitorDot className="h-4 w-4 text-primary" />
+                    Protocol utilization
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-400">
+                    Saved target distribution across remote access protocols.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {isLoading ? (
+                    <div className="space-y-3">
+                        {Array.from({ length: 2 }).map((_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-md border border-white/10 bg-white/[0.03]" />
+                        ))}
+                    </div>
+                ) : total === 0 ? (
+                    <div className="rounded-md border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-gray-400">
+                        Add SSH or RDP targets to populate utilization.
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {rows.map((row) => (
+                            <div key={row.key}>
+                                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-200">
+                                        <span className={`h-2.5 w-2.5 rounded-full ${row.colorClassName}`} />
+                                        {row.protocol}
+                                    </div>
+                                    <div className="text-gray-400">
+                                        {row.count} targets / {row.percent}%
+                                    </div>
+                                </div>
+                                <div className="h-2 rounded-full bg-white/10">
+                                    <div
+                                        className={`h-full rounded-full ${row.colorClassName}`}
+                                        style={{ width: `${row.percent}%` }}
+                                    />
                                 </div>
                             </div>
                         ))}

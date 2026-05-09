@@ -71,3 +71,22 @@ func TestValidateRequiresDistinctProductionCredentialSecret(t *testing.T) {
 		t.Fatalf("Validate() error = %q, want distinct credential secret error", err)
 	}
 }
+
+func TestValidateRequiresProductionAuthRateLimit(t *testing.T) {
+	cfg := Config{
+		NodeEnv:          "production",
+		DatabaseURL:      "postgres://user:pass@localhost:5432/nexusvault?sslmode=disable",
+		RedisURL:         "redis://localhost:6379",
+		JWTSecret:        strings.Repeat("j", minProductionSecretLength),
+		APISecret:        strings.Repeat("a", minProductionSecretLength),
+		CredentialSecret: strings.Repeat("c", minProductionSecretLength),
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want auth rate limit error")
+	}
+	if !strings.Contains(err.Error(), "AUTH_RATE_LIMIT_REQUESTS") || !strings.Contains(err.Error(), "AUTH_RATE_LIMIT_WINDOW") {
+		t.Fatalf("Validate() error = %q, want auth rate limit errors", err)
+	}
+}

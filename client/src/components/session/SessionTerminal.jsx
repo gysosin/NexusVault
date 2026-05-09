@@ -50,9 +50,8 @@ export function SessionTerminal({
     const addLog = useCallback((message) => {
         const timestamp = new Date().toLocaleTimeString();
         const logEntry = `[${timestamp}] ${message}`;
-        console.log(`[Session ${session.id}] ${message}`);
         setLogs(prev => [...prev, logEntry]);
-    }, [session.id]);
+    }, []);
 
     const updateStatus = useCallback((message) => {
         setStatus(message);
@@ -161,10 +160,7 @@ export function SessionTerminal({
             // Request replay if socket is already open (e.g. when switching tabs back to terminal)
             const ws = wsRef.current;
             if (ws && ws.readyState === WebSocket.OPEN) {
-                console.log('[SessionTerminal] Requesting replay for', session.id);
                 ws.send(JSON.stringify({ type: 'replay' }));
-            } else {
-                console.log('[SessionTerminal] WS not ready for replay', session.id, ws?.readyState);
             }
 
             term.writeln(`Connecting to ${session.username}@${session.host}...`);
@@ -358,7 +354,6 @@ export function SessionTerminal({
         if (isActive) {
             // Small delay to allow layout to settle (increased to match transition duration)
             setTimeout(() => {
-                console.log('[SessionTerminal] Fitting and focusing', session.id);
                 sendResize();
                 termRef.current?.focus();
             }, 350);

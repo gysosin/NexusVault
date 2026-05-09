@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"go-server/internal/connection"
 	"go-server/internal/db"
@@ -11,6 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+const connectionDatabaseTimeout = 3 * time.Second
 
 type CreateConnectionRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -32,10 +36,12 @@ type UpdateConnectionRequest struct {
 
 func GetConnections(c *gin.Context) {
 	userID, _ := c.Get("userId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
 
 	var connections []models.Connection
 	query := `SELECT id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE user_id = $1 ORDER BY created_at DESC`
-	err := db.DB.Select(&connections, query, userID)
+	err := db.DB.SelectContext(ctx, &connections, query, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch connections"})
 		return
@@ -51,6 +57,9 @@ func GetConnections(c *gin.Context) {
 
 func CreateConnection(c *gin.Context) {
 	userID, _ := c.Get("userId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
+
 	var req CreateConnectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -75,7 +84,7 @@ func CreateConnection(c *gin.Context) {
 
 	var conn models.Connection
 	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
-	err = db.DB.QueryRowx(query, userID, fields.Name, fields.Host, fields.Port, fields.Username, encryptedPassword, fields.Type).StructScan(&conn)
+	err = db.DB.QueryRowxContext(ctx, query, userID, fields.Name, fields.Host, fields.Port, fields.Username, encryptedPassword, fields.Type).StructScan(&conn)
 
 	if err != nil {
 		utils.Log("Error creating connection", err)
@@ -88,6 +97,9 @@ func CreateConnection(c *gin.Context) {
 
 func UpdateConnection(c *gin.Context) {
 	userID, _ := c.Get("userId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
+
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -103,7 +115,7 @@ func UpdateConnection(c *gin.Context) {
 
 	// Check ownership
 	var existing models.Connection
-	err = db.DB.Get(&existing, "SELECT * FROM connections WHERE id = $1 AND user_id = $2", id, userID)
+	err = db.DB.GetContext(ctx, &existing, "SELECT * FROM connections WHERE id = $1 AND user_id = $2", id, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Connection not found"})
 		return
@@ -156,7 +168,7 @@ func UpdateConnection(c *gin.Context) {
 
 	var updated models.Connection
 	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
-	err = db.DB.QueryRowx(query, fields.Name, fields.Host, fields.Port, fields.Username, password, fields.Type, id, userID).StructScan(&updated)
+	err = db.DB.QueryRowxContext(ctx, query, fields.Name, fields.Host, fields.Port, fields.Username, password, fields.Type, id, userID).StructScan(&updated)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update connection"})
@@ -168,6 +180,9 @@ func UpdateConnection(c *gin.Context) {
 
 func DeleteConnection(c *gin.Context) {
 	userID, _ := c.Get("userId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
+
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -175,7 +190,7 @@ func DeleteConnection(c *gin.Context) {
 		return
 	}
 
-	result, err := db.DB.Exec("DELETE FROM connections WHERE id = $1 AND user_id = $2", id, userID)
+	result, err := db.DB.ExecContext(ctx, "DELETE FROM connections WHERE id = $1 AND user_id = $2", id, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete connection"})
 		return

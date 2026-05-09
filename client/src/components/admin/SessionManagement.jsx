@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { requestJson } from '@/api/client';
 
 export function SessionManagement() {
     const [sessions, setSessions] = useState([]);
@@ -26,14 +27,8 @@ export function SessionManagement() {
 
     const fetchSessions = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/sessions', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setSessions(data || []);
-            }
+            const data = await requestJson('/api/admin/sessions');
+            setSessions(data || []);
         } catch (err) {
             console.error('Failed to fetch sessions', err);
         } finally {
@@ -49,16 +44,12 @@ export function SessionManagement() {
     const handleTerminateSession = async () => {
         if (!selectedSession) return;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/admin/sessions/${selectedSession.ID}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            await requestJson(`/api/admin/sessions/${selectedSession.ID}`, {
+                method: 'DELETE'
             });
-            if (res.ok) {
-                fetchSessions();
-                setIsDialogOpen(false);
-                setSelectedSession(null);
-            }
+            fetchSessions();
+            setIsDialogOpen(false);
+            setSelectedSession(null);
         } catch (err) {
             console.error('Failed to terminate session', err);
         }

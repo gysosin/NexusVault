@@ -2,17 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Terminal, Trash2, Search, Server, Share2, Activity } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
-import { SharingDialog } from '../dialogs/SharingDialog';
 import { Badge } from '@/components/ui/badge';
 
 export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = [] }) {
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [sharingConnection, setSharingConnection] = useState(null);
 
 
     const filtered = connections.filter((c) =>
@@ -52,7 +48,6 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
                         sessions={sessions}
                         onConnect={onConnect}
                         onDelete={onDelete}
-                        setSharingConnection={setSharingConnection}
                     />
                 ))}
                 {filtered.length === 0 && (
@@ -67,17 +62,11 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
                 onOpenChange={setIsAddOpen}
                 onAdd={onAdd}
             />
-
-            <SharingDialog
-                open={!!sharingConnection}
-                onOpenChange={(open) => !open && setSharingConnection(null)}
-                connectionName={sharingConnection?.name || ''}
-            />
         </div >
     );
 }
 
-function ConnectionCard({ conn, sessions, onConnect, onDelete, setSharingConnection }) {
+function ConnectionCard({ conn, sessions, onConnect, onDelete }) {
     const getActiveSessionCount = (connectionId) => {
         return sessions.filter(s => s.connectionId === connectionId || (s.host === connectionId.host && s.username === connectionId.username)).length;
     };
@@ -99,15 +88,6 @@ function ConnectionCard({ conn, sessions, onConnect, onDelete, setSharingConnect
                                 Connected
                             </Badge>
                         )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-white/5"
-                            onClick={() => setSharingConnection(conn)}
-                            title="Share Connection"
-                        >
-                            <Share2 className="h-4 w-4" />
-                        </Button>
                         <Button
                             variant="ghost"
                             size="icon"

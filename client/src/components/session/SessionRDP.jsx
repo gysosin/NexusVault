@@ -32,7 +32,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
     const frameQueueRef = useRef([]);
     const animationFrameRef = useRef(null);
     const surfaceSizeRef = useRef({ width: session.width || 1024, height: session.height || 768 });
-    const lastFrameAtRef = useRef(Date.now());
+    const lastFrameAtRef = useRef(0);
     const lastReconnectAtRef = useRef(0);
     const suppressResizeSendRef = useRef(false);
 
@@ -48,7 +48,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
         return `${protocol}//${host}/ws`;
     }, []);
 
-    const drainFrameQueue = useCallback(() => {
+    const drainFrameQueue = useCallback(function flushQueuedFrames() {
         const ctx = ctxRef.current;
         const canvas = canvasRef.current;
         if (!ctx || !canvas) {
@@ -70,7 +70,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
         }
 
         if (frameQueueRef.current.length) {
-            animationFrameRef.current = requestAnimationFrame(drainFrameQueue);
+            animationFrameRef.current = requestAnimationFrame(flushQueuedFrames);
         } else {
             animationFrameRef.current = null;
         }
@@ -233,7 +233,9 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                 wsRef.current.onclose = null;
                 wsRef.current.onerror = null;
                 wsRef.current.close();
-            } catch (_) { }
+            } catch {
+                // Ignore close errors from already-closing sockets.
+            }
             wsRef.current = null;
         }
 
@@ -364,7 +366,9 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                 ws.onmessage = null;
                 ws.onclose = null;
                 ws.onerror = null;
-                try { ws.close(); } catch (_) { }
+                try { ws.close(); } catch {
+                    // Ignore close errors from already-closing sockets.
+                }
             }
         };
     }, [connectWebSocket]);
@@ -413,7 +417,9 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
                 if (now - lastReconnectAtRef.current < 4000) return;
                 lastReconnectAtRef.current = now;
                 setStatus('Reconnecting...');
-                try { ws.close(); } catch (_) { }
+                try { ws.close(); } catch {
+                    // Ignore close errors from already-closing sockets.
+                }
                 connectWebSocket();
             }
         }, 2000);

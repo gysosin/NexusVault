@@ -3,7 +3,6 @@ import { Navbar } from '../components/layout/Navbar';
 import { Sidebar } from '../components/layout/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
-import { useEffect } from 'react';
 import SessionSidebar from '../components/session/SessionSidebar';
 
 export const MainLayout = ({ children, view, setView }) => {

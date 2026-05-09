@@ -74,8 +74,8 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await authApi.logout();
-        } catch (e) {
-            // ignore
+        } catch {
+            // Logout should clear local state even if the server session is already gone.
         }
         persistToken(null);
         setUser(null);

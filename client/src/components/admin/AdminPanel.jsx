@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserManagement } from './UserManagement';
 import { RoleManagement } from './RoleManagement';
@@ -9,8 +9,6 @@ import { SessionManagement } from './SessionManagement';
 import { Shield, Users, Activity, LayoutDashboard, Settings, Power } from 'lucide-react';
 
 export function AdminPanel() {
-    const [activeTab, setActiveTab] = useState('overview');
-
     return (
         <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col space-y-2">
@@ -20,7 +18,7 @@ export function AdminPanel() {
                 </p>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab}>
+            <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-6 lg:w-[800px]">
                     <TabsTrigger value="overview" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />

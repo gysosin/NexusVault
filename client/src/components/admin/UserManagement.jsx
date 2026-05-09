@@ -92,6 +92,21 @@ export function UserManagement() {
         }
     };
 
+    const handleLogoutUser = async (id) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`/api/admin/users/${id}/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                throw new Error('Failed to revoke user sessions');
+            }
+        } catch (err) {
+            console.error('Failed to log out user', err);
+        }
+    };
+
     if (loading) return <div className="text-white p-4">Loading users...</div>;
 
     return (

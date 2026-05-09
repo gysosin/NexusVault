@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Monitor, X, Plus, Activity, Wifi, Terminal, Folder, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ function PortalPreview({ session, isActive, parentRect }) {
     };
 
     return createPortal(
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -59,7 +59,7 @@ function PortalPreview({ session, isActive, parentRect }) {
                     )}
                 </div>
             </div>
-        </motion.div>,
+        </Motion.div>,
         document.body
     );
 }
@@ -153,7 +153,7 @@ function SessionItem({ session, isActive, onClick, onClose, isSidebarExpanded })
     );
 }
 
-function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession, onCloseSession, isSidebarExpanded }) {
+function SessionGroup({ sessions, activeSessionId, onSwitchSession, onCloseSession, isSidebarExpanded }) {
     const [isExpanded, setIsExpanded] = useState(true);
     const firstSession = sessions[0];
     const title = firstSession ? `${firstSession.username}@${firstSession.host}` : 'Unknown';
@@ -163,7 +163,7 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
             <div className="space-y-1">
                 <AnimatePresence mode="popLayout">
                     {sessions.map(session => (
-                        <motion.div
+                        <Motion.div
                             key={session.id}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -177,7 +177,7 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
                                 onClose={onCloseSession}
                                 isSidebarExpanded={isSidebarExpanded}
                             />
-                        </motion.div>
+                        </Motion.div>
                     ))}
                 </AnimatePresence>
             </div>
@@ -198,7 +198,7 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
 
             <AnimatePresence>
                 {isExpanded && (
-                    <motion.div
+                    <Motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
@@ -207,7 +207,7 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
                         <div className="pl-2 space-y-1 mt-1">
                             <AnimatePresence mode="popLayout">
                                 {sessions.map(session => (
-                                    <motion.div
+                                    <Motion.div
                                         key={session.id}
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -222,11 +222,11 @@ function SessionGroup({ connectionId, sessions, activeSessionId, onSwitchSession
                                             onClose={onCloseSession}
                                             isSidebarExpanded={isSidebarExpanded}
                                         />
-                                    </motion.div>
+                                    </Motion.div>
                                 ))}
                             </AnimatePresence>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
         </div>
@@ -247,7 +247,7 @@ export function SessionSidebar({ sessions, activeSessionId, onSwitchSession, onC
     }, [sessions]);
 
     return (
-        <motion.div
+        <Motion.div
             initial={false}
             animate={{ width: isExpanded ? 280 : 80 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -279,7 +279,6 @@ export function SessionSidebar({ sessions, activeSessionId, onSwitchSession, onC
                     {groupedSessions.map(([key, groupSessions]) => (
                         <SessionGroup
                             key={key}
-                            connectionId={key}
                             sessions={groupSessions}
                             activeSessionId={activeSessionId}
                             onSwitchSession={onSwitchSession}
@@ -305,7 +304,7 @@ export function SessionSidebar({ sessions, activeSessionId, onSwitchSession, onC
                     {isExpanded && <span>New Connection</span>}
                 </Button>
             </div>
-        </motion.div>
+        </Motion.div>
     );
 }
 

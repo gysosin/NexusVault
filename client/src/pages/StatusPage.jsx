@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Server, Database, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -37,19 +36,6 @@ export function StatusPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'operational':
-                return 'text-green-500';
-            case 'degraded':
-                return 'text-yellow-500';
-            case 'down':
-                return 'text-red-500';
-            default:
-                return 'text-gray-500';
-        }
-    };
-
     const getStatusIcon = (status) => {
         switch (status) {
             case 'operational':
@@ -60,19 +46,6 @@ export function StatusPage() {
                 return <XCircle className="w-5 h-5 text-red-500" />;
             default:
                 return <AlertTriangle className="w-5 h-5 text-gray-500" />;
-        }
-    };
-
-    const getBadgeVariant = (status) => {
-        switch (status) {
-            case 'operational':
-                return 'default'; // usually primary/dark
-            case 'degraded':
-                return 'secondary'; // usually yellow/orange
-            case 'down':
-                return 'destructive'; // red
-            default:
-                return 'outline';
         }
     };
 

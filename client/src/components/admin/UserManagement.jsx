@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, MoreHorizontal, Trash2, UserCog, LogOut } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MIN_ACCOUNT_PASSWORD_LENGTH } from '@/lib/authPolicy';
+import { requestJson } from '@/api/client';
 
 export function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -29,14 +30,8 @@ export function UserManagement() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/users', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setUsers(data);
-            }
+            const data = await requestJson('/api/admin/users');
+            setUsers(data);
         } catch (err) {
             console.error('Failed to fetch users', err);
         } finally {
@@ -49,41 +44,26 @@ export function UserManagement() {
         setAddUserError('');
 
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/users', {
+            await requestJson('/api/admin/users', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(newUser)
+                body: newUser
             });
-            if (res.ok) {
-                fetchUsers();
-                setIsAddUserOpen(false);
-                setNewUser({ username: '', email: '', password: '', role: 'user' });
-                return;
-            }
-
-            const data = await res.json().catch(() => ({}));
-            setAddUserError(data.error || 'Failed to create user.');
+            fetchUsers();
+            setIsAddUserOpen(false);
+            setNewUser({ username: '', email: '', password: '', role: 'user' });
         } catch (err) {
             console.error('Failed to create user', err);
-            setAddUserError('Failed to create user.');
+            setAddUserError(err.message || 'Failed to create user.');
         }
     };
 
     const handleDeleteUser = async (id) => {
         if (!confirm('Are you sure you want to delete this user?')) return;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/admin/users/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            await requestJson(`/api/admin/users/${id}`, {
+                method: 'DELETE'
             });
-            if (res.ok) {
-                fetchUsers();
-            }
+            fetchUsers();
         } catch (err) {
             console.error('Failed to delete user', err);
         }
@@ -91,18 +71,11 @@ export function UserManagement() {
 
     const handleRoleChange = async (id, newRole) => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/admin/users/${id}/role`, {
+            await requestJson(`/api/admin/users/${id}/role`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ role: newRole })
+                body: { role: newRole }
             });
-            if (res.ok) {
-                fetchUsers();
-            }
+            fetchUsers();
         } catch (err) {
             console.error('Failed to update role', err);
         }
@@ -110,14 +83,9 @@ export function UserManagement() {
 
     const handleLogoutUser = async (id) => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/admin/users/${id}/logout`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            await requestJson(`/api/admin/users/${id}/logout`, {
+                method: 'POST'
             });
-            if (!res.ok) {
-                throw new Error('Failed to revoke user sessions');
-            }
         } catch (err) {
             console.error('Failed to log out user', err);
         }

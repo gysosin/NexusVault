@@ -10,12 +10,15 @@ import (
 	"go-server/internal/utils"
 	wsPkg "go-server/internal/websocket"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 const startupMaintenanceTimeout = 5 * time.Second
+const readHeaderTimeout = 5 * time.Second
+const idleConnectionTimeout = 60 * time.Second
 
 func main() {
 	println("Starting server...")
@@ -108,7 +111,17 @@ func main() {
 
 	port := config.Envs.Port
 	utils.Log("Server running on port " + port)
-	if err := r.Run(":" + port); err != nil {
+	server := newHTTPServer(r, port)
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+func newHTTPServer(handler http.Handler, port string) *http.Server {
+	return &http.Server{
+		Addr:              ":" + port,
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+		IdleTimeout:       idleConnectionTimeout,
 	}
 }

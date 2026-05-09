@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark, Download } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark, Download, Copy, Check } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -17,6 +17,7 @@ import {
     persistDashboardViewId,
 } from '@/lib/dashboardViews';
 import { downloadConnectionsCsv } from '@/lib/connectionExport';
+import { copyConnectionAddress } from '@/lib/connectionAddress';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -112,6 +113,8 @@ export function Dashboard({
     const [search, setSearch] = useState('');
     const [quickLaunchQuery, setQuickLaunchQuery] = useState('');
     const [selectedDashboardViewId, setSelectedDashboardViewId] = useState(() => loadDashboardViewId());
+    const [copiedConnectionId, setCopiedConnectionId] = useState(null);
+    const [copyFailedConnectionId, setCopyFailedConnectionId] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
 
     const scopedConnections = useMemo(
@@ -167,6 +170,24 @@ export function Dashboard({
 
     const handleExportConnections = () => {
         downloadConnectionsCsv(filtered, selectedDashboardView.label);
+    };
+
+    const handleCopyConnectionAddress = async (connection) => {
+        setCopyFailedConnectionId(null);
+        setCopiedConnectionId(connection.id);
+        try {
+            await copyConnectionAddress(connection);
+            setTimeout(() => {
+                setCopiedConnectionId((currentId) => (currentId === connection.id ? null : currentId));
+            }, 3000);
+        } catch (err) {
+            console.error('Failed to copy connection address', err);
+            setCopiedConnectionId(null);
+            setCopyFailedConnectionId(connection.id);
+            setTimeout(() => {
+                setCopyFailedConnectionId((currentId) => (currentId === connection.id ? null : currentId));
+            }, 3000);
+        }
     };
 
 
@@ -274,6 +295,9 @@ export function Dashboard({
                         onDelete={onDelete}
                         onFavorite={onFavorite}
                         onCheckHealth={onCheckHealth}
+                        onCopyAddress={handleCopyConnectionAddress}
+                        isAddressCopied={copiedConnectionId === conn.id}
+                        copyAddressFailed={copyFailedConnectionId === conn.id}
                     />
                 ))}
                 {!isLoading && filtered.length === 0 && (
@@ -913,7 +937,28 @@ function ConnectionGridSkeleton() {
     ));
 }
 
-function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onFavorite, onCheckHealth }) {
+function getCopyAddressLabel(connection, isAddressCopied, copyAddressFailed) {
+    if (copyAddressFailed) {
+        return `Copy failed for ${connection.name}`;
+    }
+    if (isAddressCopied) {
+        return `Copied address for ${connection.name}`;
+    }
+    return `Copy address for ${connection.name}`;
+}
+
+function ConnectionCard({
+    conn,
+    sessions,
+    health,
+    onConnect,
+    onDelete,
+    onFavorite,
+    onCheckHealth,
+    onCopyAddress,
+    isAddressCopied,
+    copyAddressFailed,
+}) {
     const getActiveSessionCount = (connection) => {
         return sessions.filter(s => (
             s.connectionId === connection.id ||
@@ -938,6 +983,19 @@ function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onFavorit
                         <Server className="h-5 w-5" />
                     </div>
                     <div className="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${copyAddressFailed ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200' : 'text-muted-foreground hover:bg-white/10 hover:text-white'}`}
+                            onClick={() => onCopyAddress?.(conn)}
+                            aria-label={getCopyAddressLabel(conn, isAddressCopied, copyAddressFailed)}
+                        >
+                            {isAddressCopied ? (
+                                <Check className="h-4 w-4 text-green-300" />
+                            ) : (
+                                <Copy className="h-4 w-4" />
+                            )}
+                        </Button>
                         <Button
                             variant="ghost"
                             size="icon"

@@ -28,6 +28,7 @@ const (
 	adminDatabaseTimeout    = 3 * time.Second
 	adminSessionScanCount   = 100
 	adminSessionScanTimeout = 3 * time.Second
+	redactedAuditValue      = "[redacted]"
 )
 
 var allowedRolePermissions = map[string]struct{}{
@@ -124,9 +125,33 @@ func UpdateSystemSettings(c *gin.Context) {
 	}
 
 	userID := c.GetInt("userId")
-	utils.LogActivity(&userID, "Update Settings", "System", "Success", req)
+	utils.LogActivity(&userID, "Update Settings", "System", "Success", settingsAuditDetails(req))
 
 	GetSystemSettings(c)
+}
+
+func settingsAuditDetails(settings map[string]interface{}) map[string]interface{} {
+	details := make(map[string]interface{}, len(settings))
+	for key, value := range settings {
+		if isSensitiveSettingKey(key) {
+			details[key] = redactedAuditValue
+			continue
+		}
+		details[key] = value
+	}
+	return details
+}
+
+func isSensitiveSettingKey(key string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	return strings.Contains(normalized, "secret") ||
+		strings.Contains(normalized, "token") ||
+		strings.Contains(normalized, "password") ||
+		strings.Contains(normalized, "credential") ||
+		strings.Contains(normalized, "privatekey") ||
+		strings.Contains(normalized, "private_key") ||
+		strings.Contains(normalized, "apikey") ||
+		strings.Contains(normalized, "api_key")
 }
 
 func GetAdminStats(c *gin.Context) {

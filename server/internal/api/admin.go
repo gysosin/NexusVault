@@ -25,6 +25,7 @@ import (
 var roleIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,49}$`)
 
 const (
+	adminDatabaseTimeout    = 3 * time.Second
 	adminSessionScanCount   = 100
 	adminSessionScanTimeout = 3 * time.Second
 )
@@ -587,15 +588,15 @@ func TerminateSession(c *gin.Context) {
 	service.CloseSession(sessionID)
 
 	// Update DB history
-	result, err := db.DB.Exec("UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE session_id = $1 AND end_time IS NULL", sessionID)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	result, err := db.DB.ExecContext(ctx, "UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE session_id = $1 AND end_time IS NULL", sessionID)
 	if err != nil {
 		utils.Log("Failed to update session history:", err)
 	} else {
 		rows, _ := result.RowsAffected()
 		utils.Log("Updated session history for ID:", sessionID, "Rows affected:", rows)
-	}
-	if err != nil {
-		utils.Log("Failed to update session history for termination:", err)
 	}
 
 	adminID := c.GetInt("userId")

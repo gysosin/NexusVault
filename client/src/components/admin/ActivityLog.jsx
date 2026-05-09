@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Search } from 'lucide-react';
+import { requestJson } from '@/api/client';
 
 const CSV_FORMULA_PREFIX = /^[=+\-@\t\r]/;
 
@@ -46,15 +47,9 @@ export function ActivityLog() {
 
     const fetchLogs = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/activity', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setLogs(data);
-                setFilteredLogs(data);
-            }
+            const data = await requestJson('/api/admin/activity');
+            setLogs(data);
+            setFilteredLogs(data);
         } catch (err) {
             console.error('Failed to fetch activity logs', err);
         } finally {

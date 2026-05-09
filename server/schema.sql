@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS connections (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_connections_user_created_at
+    ON connections (user_id, created_at DESC);
+
 -- Activity Logs table
 CREATE TABLE IF NOT EXISTS activity_logs (
     id SERIAL PRIMARY KEY,
@@ -32,6 +35,12 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     details JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at
+    ON activity_logs (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_created_at
+    ON activity_logs (user_id, created_at DESC);
 
 -- Session Histories table
 CREATE TABLE IF NOT EXISTS session_histories (
@@ -46,6 +55,19 @@ CREATE TABLE IF NOT EXISTS session_histories (
     log_content TEXT,
     status VARCHAR(50) DEFAULT 'active'
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_session_histories_session_id
+    ON session_histories (session_id);
+
+CREATE INDEX IF NOT EXISTS idx_session_histories_user_start_time
+    ON session_histories (user_id, start_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_session_histories_connection_start_time
+    ON session_histories (connection_id, start_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_session_histories_active
+    ON session_histories (end_time)
+    WHERE end_time IS NULL;
 
 -- Roles table
 CREATE TABLE IF NOT EXISTS roles (

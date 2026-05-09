@@ -106,7 +106,21 @@ docker compose -f docker-compose.dev.yml up
 
 ```bash
 cp .env.example .env
+openssl rand -base64 32 # use separate outputs for JWT_SECRET and API_SECRET
 docker compose up --build
+```
+
+Required production Compose variables:
+
+- `DATABASE_URL`: for the bundled database, use `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>?sslmode=disable`.
+- `REDIS_URL`: for the bundled cache, use `redis://redis:6379`.
+- `JWT_SECRET` and `API_SECRET`: unique random values of at least 32 characters.
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`: credentials used to initialize the bundled PostgreSQL container.
+
+Validate the rendered Compose model before deployment:
+
+```bash
+docker compose config --quiet
 ```
 
 ## 🔐 Security

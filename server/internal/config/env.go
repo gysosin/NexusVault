@@ -23,6 +23,7 @@ type Config struct {
 	NodeEnv                 string
 	RedisURL                string
 	AllowedOrigins          string
+	TrustedProxies          []string
 	AllowPublicRegistration bool
 	AuthRateLimitRequests   int
 	AuthRateLimitWindow     time.Duration
@@ -54,6 +55,7 @@ func InitConfig() {
 		NodeEnv:                 nodeEnv,
 		RedisURL:                getEnv("REDIS_URL", "redis://localhost:6379"),
 		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", ""),
+		TrustedProxies:          getCSVEnv("TRUSTED_PROXIES"),
 		AllowPublicRegistration: getBoolEnv("ALLOW_PUBLIC_REGISTRATION", allowPublicRegistrationDefault),
 		AuthRateLimitRequests:   getIntEnv("AUTH_RATE_LIMIT_REQUESTS", 10),
 		AuthRateLimitWindow:     getDurationEnv("AUTH_RATE_LIMIT_WINDOW", time.Minute),
@@ -113,6 +115,22 @@ func getDurationEnv(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return parsed
+}
+
+func getCSVEnv(key string) []string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return nil
+	}
+
+	var values []string
+	for _, item := range strings.Split(value, ",") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			values = append(values, item)
+		}
+	}
+	return values
 }
 
 func (c Config) Validate() error {

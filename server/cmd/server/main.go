@@ -29,7 +29,7 @@ func main() {
 	}
 
 	r := gin.Default()
-	if err := r.SetTrustedProxies(nil); err != nil {
+	if err := r.SetTrustedProxies(config.Envs.TrustedProxies); err != nil {
 		log.Fatalf("Failed to configure trusted proxies: %v", err)
 	}
 

@@ -90,3 +90,15 @@ func TestValidateRequiresProductionAuthRateLimit(t *testing.T) {
 		t.Fatalf("Validate() error = %q, want auth rate limit errors", err)
 	}
 }
+
+func TestGetCSVEnvTrimsAndDropsEmptyValues(t *testing.T) {
+	t.Setenv("TRUSTED_PROXIES", " 10.0.0.0/8, ,192.0.2.10 ")
+
+	values := getCSVEnv("TRUSTED_PROXIES")
+	if len(values) != 2 {
+		t.Fatalf("len(values) = %d, want 2", len(values))
+	}
+	if values[0] != "10.0.0.0/8" || values[1] != "192.0.2.10" {
+		t.Fatalf("values = %#v, want trimmed proxy list", values)
+	}
+}

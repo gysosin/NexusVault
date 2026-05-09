@@ -23,6 +23,20 @@ func TestHandleNotificationsRejectsMissingTokenBeforeUpgrade(t *testing.T) {
 	}
 }
 
+func TestOptionalConnectionID(t *testing.T) {
+	if got := optionalConnectionID(0); got != nil {
+		t.Fatalf("optionalConnectionID(0) = %v, want nil", *got)
+	}
+
+	got := optionalConnectionID(42)
+	if got == nil {
+		t.Fatal("optionalConnectionID(42) = nil, want pointer")
+	}
+	if *got != 42 {
+		t.Fatalf("optionalConnectionID(42) = %d, want 42", *got)
+	}
+}
+
 func TestHandleNotificationsRejectsInvalidTokenBeforeUpgrade(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

@@ -59,6 +59,7 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
     - `AUTH_RATE_LIMIT_WINDOW`: Go duration for the auth attempt window. Defaults to `1m`.
     - `SSH_KNOWN_HOSTS_PATH`: OpenSSH `known_hosts` file used to verify SSH server keys.
     - `ALLOW_INSECURE_SSH_HOST_KEYS`: set to `true` only for local development or isolated test environments without host-key verification.
+    - `VITE_API_TIMEOUT_MS`: optional frontend API request timeout in milliseconds. Defaults to `15000`.
 
 ## 💻 Development Workflow
 

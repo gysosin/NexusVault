@@ -36,3 +36,27 @@ func TestGetHealthStatusReportsMissingDependenciesDown(t *testing.T) {
 		t.Fatalf("body = %s, want all dependencies down", response.Body.String())
 	}
 }
+
+func TestGetReadinessStatusFailsWhenDependenciesAreDown(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	originalDB := db.DB
+	originalRedis := db.Redis
+	t.Cleanup(func() {
+		db.DB = originalDB
+		db.Redis = originalRedis
+	})
+	db.DB = nil
+	db.Redis = nil
+
+	router := gin.New()
+	router.GET("/api/ready", GetReadinessStatus)
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/ready", nil)
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusServiceUnavailable)
+	}
+}

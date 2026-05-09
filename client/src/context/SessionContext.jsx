@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import * as sessionApi from '../api/sessions';
+import { withWebSocketToken } from '../api/websocket';
 import { useAuth } from './AuthContext';
 
 const SessionContext = createContext(null);
@@ -149,7 +150,7 @@ export const SessionProvider = ({ children }) => {
         let reconnectTimeout = null;
 
         const connect = () => {
-            ws = new WebSocket(wsUrl);
+            ws = new WebSocket(withWebSocketToken(wsUrl, token));
 
             ws.onopen = () => {
                 console.log('Notification WS connected');

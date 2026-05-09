@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { encryptPayload } from '../../api/encryption';
+import { withWebSocketToken } from '../../api/websocket';
 import { ScrollText, Power, X, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionHistory } from './SessionHistory';
@@ -246,7 +247,7 @@ export function SessionTerminal({
         if (!authToken || !session) return;
         // if (isPreview) return; // Allow websockets for previews now
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(withWebSocketToken(wsUrl, authToken));
         wsRef.current = ws;
         updateStatus('Connecting...');
 

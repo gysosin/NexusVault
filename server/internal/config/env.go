@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	APISecret   string
-	NodeEnv     string
-	RedisURL    string
+	Port           string
+	DatabaseURL    string
+	JWTSecret      string
+	APISecret      string
+	NodeEnv        string
+	RedisURL       string
+	AllowedOrigins string
 }
 
 var Envs Config
@@ -25,12 +26,13 @@ func InitConfig() {
 	}
 
 	Envs = Config{
-		Port:        getEnv("PORT", "3000"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", "default_secret"),
-		APISecret:   getEnv("API_SECRET", "default_api_secret"),
-		NodeEnv:     getEnv("NODE_ENV", "development"),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
+		Port:           getEnv("PORT", "3000"),
+		DatabaseURL:    getEnv("DATABASE_URL", ""),
+		JWTSecret:      getEnv("JWT_SECRET", "default_secret"),
+		APISecret:      getEnv("API_SECRET", "default_api_secret"),
+		NodeEnv:        getEnv("NODE_ENV", "development"),
+		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379"),
+		AllowedOrigins: getEnv("ALLOWED_ORIGINS", ""),
 	}
 }
 

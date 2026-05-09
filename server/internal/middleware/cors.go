@@ -1,12 +1,23 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"go-server/internal/security"
+
+	"github.com/gin-gonic/gin"
+)
 
 // CORSMiddleware sets permissive headers for browser clients and short-circuits OPTIONS requests.
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 		if origin != "" {
+			c.Writer.Header().Set("Vary", "Origin")
+			if !security.IsOriginAllowed(c.Request) {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Origin not allowed"})
+				return
+			}
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")

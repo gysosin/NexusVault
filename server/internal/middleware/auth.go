@@ -18,6 +18,7 @@ import (
 )
 
 const sessionStoreTimeout = 2 * time.Second
+const maxEncryptedPayloadBytes = 1 << 20
 
 func DecryptPayload() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -51,8 +52,14 @@ func DecryptPayloadMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxEncryptedPayloadBytes)
 		bodyBytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large."})
+				return
+			}
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 			return
 		}

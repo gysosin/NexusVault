@@ -90,15 +90,24 @@ func UpdateSystemSettings(c *gin.Context) {
 		return
 	}
 
-	tx, err := db.DB.Beginx()
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	tx, err := db.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
 
 	for key, val := range req {
-		valJSON, _ := json.Marshal(val)
-		if _, err := tx.Exec(`
+		valJSON, err := json.Marshal(val)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid setting value: " + key})
+			return
+		}
+
+		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO system_settings (key, value, updated_at) 
 			VALUES ($1, $2, NOW()) 
 			ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()

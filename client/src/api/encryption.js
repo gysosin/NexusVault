@@ -1,10 +1,16 @@
 import CryptoJS from 'crypto-js';
 
-// Must match server's API_SECRET (defaults to "default_api_secret")
-const API_SECRET = import.meta.env.VITE_API_SECRET || 'default_api_secret';
+const API_SECRET = import.meta.env.VITE_API_SECRET || (import.meta.env.DEV ? 'default_api_secret' : '');
+
+const apiSecret = () => {
+  if (!API_SECRET) {
+    throw new Error('VITE_API_SECRET is required to encrypt connection payloads.');
+  }
+  return API_SECRET;
+};
 
 export const encryptPayload = (data) => {
   if (!data) return null;
   const json = JSON.stringify(data);
-  return CryptoJS.AES.encrypt(json, API_SECRET).toString();
+  return CryptoJS.AES.encrypt(json, apiSecret()).toString();
 };

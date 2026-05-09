@@ -8,12 +8,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, MoreHorizontal, Trash2, UserCog, LogOut } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MIN_ACCOUNT_PASSWORD_LENGTH } from '@/lib/authPolicy';
 
 export function UserManagement() {
     const [users, setUsers] = useState([]);
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'user' });
     const [loading, setLoading] = useState(true);
+    const canCreateUser = Boolean(
+        newUser.username.trim()
+        && newUser.email.trim()
+        && newUser.password.length >= MIN_ACCOUNT_PASSWORD_LENGTH
+        && newUser.role
+    );
 
     useEffect(() => {
         fetchUsers();
@@ -37,6 +44,8 @@ export function UserManagement() {
     };
 
     const handleAddUser = async () => {
+        if (!canCreateUser) return;
+
         try {
             const token = localStorage.getItem('auth_token');
             const res = await fetch('/api/admin/users', {
@@ -194,6 +203,7 @@ export function UserManagement() {
                             <Input
                                 value={newUser.username}
                                 onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                                autoComplete="username"
                                 className="bg-black/20 border-white/10"
                             />
                         </div>
@@ -203,6 +213,7 @@ export function UserManagement() {
                                 type="email"
                                 value={newUser.email}
                                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                autoComplete="email"
                                 className="bg-black/20 border-white/10"
                             />
                         </div>
@@ -212,8 +223,14 @@ export function UserManagement() {
                                 type="password"
                                 value={newUser.password}
                                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                autoComplete="new-password"
+                                minLength={MIN_ACCOUNT_PASSWORD_LENGTH}
+                                aria-describedby="admin-password-help"
                                 className="bg-black/20 border-white/10"
                             />
+                            <p id="admin-password-help" className="text-xs text-gray-400">
+                                At least {MIN_ACCOUNT_PASSWORD_LENGTH} characters.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Role</Label>
@@ -236,7 +253,7 @@ export function UserManagement() {
                         <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="border-white/10 hover:bg-white/5 text-gray-300">
                             Cancel
                         </Button>
-                        <Button onClick={handleAddUser} className="bg-brand-primary hover:bg-brand-primary/90">
+                        <Button onClick={handleAddUser} disabled={!canCreateUser} className="bg-brand-primary hover:bg-brand-primary/90">
                             Create User
                         </Button>
                     </DialogFooter>

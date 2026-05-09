@@ -1,0 +1,1 @@
+export const MIN_ACCOUNT_PASSWORD_LENGTH = 8;

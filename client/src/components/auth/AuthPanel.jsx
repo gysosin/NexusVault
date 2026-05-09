@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
+import { MIN_ACCOUNT_PASSWORD_LENGTH } from '@/lib/authPolicy';
 
 const loginInitial = { identifier: '', password: '' };
 const registerInitial = { username: '', email: '', password: '' };
@@ -14,6 +15,7 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
   const [registerForm, setRegisterForm] = useState(registerInitial);
 
   const isLogin = mode === 'login';
+  const registerPasswordTooShort = !isLogin && registerForm.password.length < MIN_ACCOUNT_PASSWORD_LENGTH;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -80,6 +82,8 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
                     value={loginForm.identifier}
                     onChange={handleChange}
                     placeholder="username / email"
+                    autoComplete="username"
+                    required
                     disabled={loading}
                     className="bg-white/5 border-white/10"
                   />
@@ -92,6 +96,8 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
                     name="password"
                     value={loginForm.password}
                     onChange={handleChange}
+                    autoComplete="current-password"
+                    required
                     disabled={loading}
                     className="bg-white/5 border-white/10"
                   />
@@ -106,6 +112,8 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
                     name="username"
                     value={registerForm.username}
                     onChange={handleChange}
+                    autoComplete="username"
+                    required
                     disabled={loading}
                     className="bg-white/5 border-white/10"
                   />
@@ -118,6 +126,8 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
                     type="email"
                     value={registerForm.email}
                     onChange={handleChange}
+                    autoComplete="email"
+                    required
                     disabled={loading}
                     className="bg-white/5 border-white/10"
                   />
@@ -130,13 +140,20 @@ export default function AuthPanel({ user, status, loading, onLogin, onRegister, 
                     name="password"
                     value={registerForm.password}
                     onChange={handleChange}
+                    autoComplete="new-password"
+                    minLength={MIN_ACCOUNT_PASSWORD_LENGTH}
+                    aria-describedby="reg-password-help"
+                    required
                     disabled={loading}
                     className="bg-white/5 border-white/10"
                   />
+                  <p id="reg-password-help" className="text-xs text-gray-400">
+                    At least {MIN_ACCOUNT_PASSWORD_LENGTH} characters.
+                  </p>
                 </div>
               </>
             )}
-            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
+            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading || registerPasswordTooShort}>
               {isLogin ? 'Sign in' : 'Create account'}
             </Button>
           </div>

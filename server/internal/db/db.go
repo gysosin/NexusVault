@@ -12,7 +12,13 @@ import (
 
 var DB *sqlx.DB
 
-const startupConnectionTimeout = 5 * time.Second
+const (
+	startupConnectionTimeout     = 5 * time.Second
+	databaseMaxOpenConnections   = 25
+	databaseMaxIdleConnections   = 10
+	databaseConnectionMaxAge     = 30 * time.Minute
+	databaseConnectionMaxIdleAge = 5 * time.Minute
+)
 
 func InitDb() {
 	var err error
@@ -23,6 +29,14 @@ func InitDb() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database within %s: %v", startupConnectionTimeout, err)
 	}
+	configureConnectionPool(DB)
 
 	log.Println("Connected to database")
+}
+
+func configureConnectionPool(database *sqlx.DB) {
+	database.SetMaxOpenConns(databaseMaxOpenConnections)
+	database.SetMaxIdleConns(databaseMaxIdleConnections)
+	database.SetConnMaxLifetime(databaseConnectionMaxAge)
+	database.SetConnMaxIdleTime(databaseConnectionMaxIdleAge)
 }

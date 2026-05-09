@@ -93,7 +93,7 @@ cd ../server && go build ./cmd/server
 
 Access the application at `http://localhost:3000`.
 
-Production mode fails fast if `JWT_SECRET`, `API_SECRET`, `DATABASE_URL`, or `REDIS_URL` are missing or unsafe.
+Production mode fails fast if `JWT_SECRET`, `API_SECRET`, `CREDENTIAL_SECRET`, `DATABASE_URL`, or `REDIS_URL` are missing or unsafe.
 The first registered user bootstraps as `admin`; subsequent public registration is disabled in production unless `ALLOW_PUBLIC_REGISTRATION=true`.
 Login and registration endpoints are rate limited per client IP. Tune `AUTH_RATE_LIMIT_REQUESTS` and `AUTH_RATE_LIMIT_WINDOW` for your threat model and reverse-proxy topology.
 
@@ -112,7 +112,7 @@ docker compose -f docker-compose.dev.yml up
 
 ```bash
 cp .env.example .env
-openssl rand -base64 32 # use separate outputs for JWT_SECRET and API_SECRET
+openssl rand -base64 32 # use separate outputs for JWT_SECRET, API_SECRET, and CREDENTIAL_SECRET
 docker compose up --build
 ```
 

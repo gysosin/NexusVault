@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark, Download } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -16,6 +16,7 @@ import {
     loadDashboardViewId,
     persistDashboardViewId,
 } from '@/lib/dashboardViews';
+import { downloadConnectionsCsv } from '@/lib/connectionExport';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -164,6 +165,10 @@ export function Dashboard({
         persistDashboardViewId(viewId);
     };
 
+    const handleExportConnections = () => {
+        downloadConnectionsCsv(filtered, selectedDashboardView.label);
+    };
+
 
     return (
         <div className="h-full flex flex-col p-6 space-y-6 animate-in fade-in duration-500 overflow-y-auto">
@@ -234,14 +239,25 @@ export function Dashboard({
                 </div>
             )}
 
-            <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder={`Search ${selectedDashboardView.label.toLowerCase()}...`}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 max-w-md bg-card/50 backdrop-blur-sm border-white/10 focus:border-primary/50"
-                />
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="relative w-full max-w-md">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder={`Search ${selectedDashboardView.label.toLowerCase()}...`}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9 bg-card/50 backdrop-blur-sm border-white/10 focus:border-primary/50"
+                    />
+                </div>
+                <Button
+                    variant="outline"
+                    onClick={handleExportConnections}
+                    disabled={filtered.length === 0}
+                    className="w-full border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/10 hover:text-white lg:w-auto"
+                >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export view
+                </Button>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">

@@ -2,11 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
 import { buildConnectionRiskSummary } from '@/lib/connectionRisk';
+import { getQuickLaunchMatches } from '@/lib/quickLaunch';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -72,6 +73,7 @@ export function Dashboard({
     onRefreshRecentSessions,
 }) {
     const [search, setSearch] = useState('');
+    const [quickLaunchQuery, setQuickLaunchQuery] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
 
     const analytics = useMemo(
@@ -90,6 +92,10 @@ export function Dashboard({
     const riskSummary = useMemo(
         () => buildConnectionRiskSummary(connections),
         [connections]
+    );
+    const quickLaunchMatches = useMemo(
+        () => getQuickLaunchMatches(connections, quickLaunchQuery, 5),
+        [connections, quickLaunchQuery]
     );
 
     const filtered = connections.filter((c) =>
@@ -112,6 +118,15 @@ export function Dashboard({
             </div>
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
+
+            <QuickLaunchCommandBox
+                query={quickLaunchQuery}
+                matches={quickLaunchMatches}
+                isLoading={isLoading}
+                onQueryChange={setQuickLaunchQuery}
+                onConnect={onConnect}
+                onAdd={() => setIsAddOpen(true)}
+            />
 
             <FavoriteConnectionsRail
                 favorites={favoriteConnections}
@@ -221,6 +236,74 @@ function DashboardAnalytics({ analytics, isLoading }) {
                 );
             })}
         </div>
+    );
+}
+
+function QuickLaunchCommandBox({ query, matches, isLoading, onQueryChange, onConnect, onAdd }) {
+    const hasQuery = query.trim().length > 0;
+
+    return (
+        <Card className="border-white/10 bg-[#07111d]/80">
+            <CardContent className="p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                    <div className="min-w-0 flex-1">
+                        <div className="relative">
+                            <Command className="absolute left-3 top-3 h-4 w-4 text-primary" />
+                            <Input
+                                value={query}
+                                onChange={(event) => onQueryChange(event.target.value)}
+                                placeholder="Host, user, protocol, or port"
+                                className="h-11 border-white/10 bg-black/20 pl-9 text-sm text-white placeholder:text-gray-500 focus:border-primary/60"
+                                aria-label="Quick launch connections"
+                            />
+                        </div>
+                        <div className="mt-3 text-xs text-gray-500">
+                            {matches.length} {matches.length === 1 ? 'target' : 'targets'} ready
+                        </div>
+                    </div>
+
+                    <div className="grid w-full gap-2 lg:w-[28rem]">
+                        {isLoading ? (
+                            Array.from({ length: 2 }).map((_, index) => (
+                                <div key={index} className="h-12 animate-pulse rounded-md border border-white/10 bg-white/[0.04]" />
+                            ))
+                        ) : matches.length === 0 ? (
+                            <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-white/10 bg-white/[0.03] px-3 py-3 text-sm text-gray-400">
+                                <span>{hasQuery ? 'No matching targets' : 'No saved targets'}</span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 border-white/10 bg-white/[0.04] text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+                                    onClick={onAdd}
+                                >
+                                    Add target
+                                </Button>
+                            </div>
+                        ) : (
+                            matches.map((connection) => (
+                                <button
+                                    key={connection.id}
+                                    type="button"
+                                    className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+                                    onClick={() => onConnect(connection)}
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm font-medium text-gray-100">{connection.name}</span>
+                                        <span className="block truncate font-mono text-xs text-gray-500">
+                                            {connection.username}@{connection.host}:{connection.port}
+                                        </span>
+                                    </span>
+                                    <span className="flex shrink-0 items-center gap-2 text-xs uppercase text-gray-500">
+                                        {connection.type || 'ssh'}
+                                        <ArrowRight className="h-3.5 w-3.5" />
+                                    </span>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 

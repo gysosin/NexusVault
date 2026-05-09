@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Plus } from 'lucide-react';
 
-export function AddConnectionDialog({ onAdd }) {
-    const [open, setOpen] = useState(false);
+export function AddConnectionDialog({ onAdd, open: controlledOpen, onOpenChange }) {
+    const [internalOpen, setInternalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
         name: '',
@@ -31,6 +31,8 @@ export function AddConnectionDialog({ onAdd }) {
         password: '',
         type: 'ssh',
     });
+    const open = controlledOpen ?? internalOpen;
+    const setOpen = onOpenChange ?? setInternalOpen;
 
     const handleSubmit = async (e) => {
         e.preventDefault();

@@ -451,11 +451,6 @@ func DeleteRole(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// PromoteUser (Example admin action)
-func PromoteUser(c *gin.Context) {
-	c.Status(http.StatusNotImplemented)
-}
-
 func normalizeCreateRoleRequest(req *createRoleRequest) error {
 	req.ID = strings.ToLower(strings.TrimSpace(req.ID))
 	req.Name = strings.TrimSpace(req.Name)

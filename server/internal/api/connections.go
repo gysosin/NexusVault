@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +17,7 @@ import (
 )
 
 const connectionDatabaseTimeout = 3 * time.Second
+const connectionProbeTimeout = 2 * time.Second
 
 type CreateConnectionRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -32,6 +35,14 @@ type UpdateConnectionRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Type     string `json:"type"`
+}
+
+type ConnectionHealthResponse struct {
+	ConnectionID int       `json:"connectionId"`
+	Status       string    `json:"status"`
+	LatencyMs    int64     `json:"latencyMs"`
+	CheckedAt    time.Time `json:"checkedAt"`
+	Error        string    `json:"error,omitempty"`
 }
 
 func GetConnections(c *gin.Context) {
@@ -203,4 +214,70 @@ func DeleteConnection(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func CheckConnectionHealth(c *gin.Context) {
+	userID, _ := c.Get("userId")
+	dbCtx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid connection ID"})
+		return
+	}
+
+	var conn models.Connection
+	err = db.DB.GetContext(dbCtx, &conn, "SELECT id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", id, userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Connection not found"})
+		return
+	}
+
+	probeCtx, probeCancel := context.WithTimeout(c.Request.Context(), connectionProbeTimeout)
+	defer probeCancel()
+
+	response := probeConnection(probeCtx, conn)
+	c.JSON(http.StatusOK, response)
+}
+
+func probeConnection(ctx context.Context, conn models.Connection) ConnectionHealthResponse {
+	startedAt := time.Now()
+	response := ConnectionHealthResponse{
+		ConnectionID: conn.ID,
+		Status:       "unreachable",
+		CheckedAt:    startedAt.UTC(),
+	}
+
+	if conn.Port <= 0 || conn.Port > 65535 {
+		response.Error = "Connection port is invalid"
+		return response
+	}
+
+	address := net.JoinHostPort(conn.Host, strconv.Itoa(conn.Port))
+	var dialer net.Dialer
+	tcpConn, err := dialer.DialContext(ctx, "tcp", address)
+	response.LatencyMs = time.Since(startedAt).Milliseconds()
+	if err != nil {
+		response.Error = friendlyProbeError(err)
+		return response
+	}
+	defer tcpConn.Close()
+
+	response.Status = "reachable"
+	return response
+}
+
+func friendlyProbeError(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "Connection check timed out"
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "Connection check timed out"
+	}
+
+	return "Host is not reachable on the configured port"
 }

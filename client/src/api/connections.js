@@ -24,3 +24,8 @@ export const deleteConnection = (id) =>
   requestJson(`/api/connections/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+
+export const checkConnectionHealth = (id) =>
+  requestJson(`/api/connections/${encodeURIComponent(id)}/health`, {
+    timeoutMs: 5000,
+  });

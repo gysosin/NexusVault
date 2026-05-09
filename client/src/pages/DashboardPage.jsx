@@ -17,6 +17,7 @@ export const DashboardPage = ({ setView }) => {
     const [restoreHistory, setRestoreHistory] = useState(false);
     const [isLoadingConnections, setIsLoadingConnections] = useState(true);
     const [connectionError, setConnectionError] = useState(null);
+    const [connectionHealth, setConnectionHealth] = useState({});
 
     const fetchConnections = useCallback(async () => {
         setIsLoadingConnections(true);
@@ -51,10 +52,39 @@ export const DashboardPage = ({ setView }) => {
         try {
             await connectionApi.deleteConnection(id);
             setConnections((prev) => prev.filter((conn) => conn.id !== id));
+            setConnectionHealth((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
             setConnectionError(null);
         } catch (err) {
             console.error('Failed to delete connection', err);
             setConnectionError(err.message || 'Failed to delete connection.');
+        }
+    };
+
+    const handleCheckConnectionHealth = async (id) => {
+        setConnectionHealth((prev) => ({
+            ...prev,
+            [id]: { status: 'checking', checkedAt: new Date().toISOString() },
+        }));
+
+        try {
+            const result = await connectionApi.checkConnectionHealth(id);
+            setConnectionHealth((prev) => ({
+                ...prev,
+                [id]: result,
+            }));
+        } catch (err) {
+            setConnectionHealth((prev) => ({
+                ...prev,
+                [id]: {
+                    status: 'error',
+                    checkedAt: new Date().toISOString(),
+                    error: err.message || 'Failed to check connection health.',
+                },
+            }));
         }
     };
 
@@ -88,6 +118,8 @@ export const DashboardPage = ({ setView }) => {
                 sessions={sessions}
                 isLoading={isLoadingConnections}
                 error={connectionError}
+                connectionHealth={connectionHealth}
+                onCheckHealth={handleCheckConnectionHealth}
                 activeSession={null}
             />
 

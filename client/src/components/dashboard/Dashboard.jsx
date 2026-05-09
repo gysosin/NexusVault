@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -14,13 +14,58 @@ const analyticsIcons = {
     credentialCoverage: KeyRound,
 };
 
-export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = [], isLoading = false, error = null }) {
+const healthStatusConfig = {
+    reachable: {
+        label: 'Reachable',
+        detailClassName: 'text-green-300',
+        badgeClassName: 'border-green-500/30 bg-green-500/10 text-green-300',
+        Icon: Wifi,
+    },
+    unreachable: {
+        label: 'Unreachable',
+        detailClassName: 'text-amber-300',
+        badgeClassName: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+        Icon: WifiOff,
+    },
+    error: {
+        label: 'Check failed',
+        detailClassName: 'text-amber-300',
+        badgeClassName: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+        Icon: WifiOff,
+    },
+    checking: {
+        label: 'Checking',
+        detailClassName: 'text-sky-300',
+        badgeClassName: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+        Icon: RefreshCw,
+    },
+    unknown: {
+        label: 'Not checked',
+        detailClassName: 'text-gray-400',
+        badgeClassName: 'border-white/10 bg-white/[0.04] text-gray-400',
+        Icon: CircleDashed,
+    },
+};
+
+const getHealthStatus = (health) => {
+    if (!health?.status || !healthStatusConfig[health.status]) {
+        return 'unknown';
+    }
+    return health.status;
+};
+
+export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = [], isLoading = false, error = null, connectionHealth = {}, onCheckHealth }) {
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
 
     const analytics = useMemo(
         () => buildDashboardAnalytics({ connections, sessions }),
         [connections, sessions]
+    );
+
+    const healthSummary = useMemo(
+        () => buildHealthSummary(connections, connectionHealth),
+        [connections, connectionHealth]
     );
 
     const filtered = connections.filter((c) =>
@@ -43,6 +88,8 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
             </div>
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
+
+            <ConnectionHealthSnapshot summary={healthSummary} isLoading={isLoading} />
 
             {error && (
                 <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -69,8 +116,10 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
                         key={conn.id}
                         conn={conn}
                         sessions={sessions}
+                        health={connectionHealth[conn.id]}
                         onConnect={onConnect}
                         onDelete={onDelete}
+                        onCheckHealth={onCheckHealth}
                     />
                 ))}
                 {!isLoading && filtered.length === 0 && (
@@ -87,6 +136,21 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
             />
         </div >
     );
+}
+
+function buildHealthSummary(connections, connectionHealth) {
+    return connections.reduce((summary, connection) => {
+        const status = getHealthStatus(connectionHealth[connection.id]);
+        summary[status] += 1;
+        return summary;
+    }, {
+        reachable: 0,
+        unreachable: 0,
+        error: 0,
+        checking: 0,
+        unknown: 0,
+        total: connections.length,
+    });
 }
 
 function DashboardAnalytics({ analytics, isLoading }) {
@@ -119,6 +183,42 @@ function DashboardAnalytics({ analytics, isLoading }) {
     );
 }
 
+function ConnectionHealthSnapshot({ summary, isLoading }) {
+    const notReadyCount = summary.unreachable + summary.error;
+
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white">Connection health snapshot</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                        Check saved SSH/RDP targets before opening a terminal session.
+                    </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <HealthSummaryPill label="Ready" value={summary.reachable} tone="text-green-300" isLoading={isLoading} />
+                    <HealthSummaryPill label="Needs review" value={notReadyCount} tone="text-amber-300" isLoading={isLoading} />
+                    <HealthSummaryPill label="Checking" value={summary.checking} tone="text-sky-300" isLoading={isLoading} />
+                    <HealthSummaryPill label="Not checked" value={summary.unknown} tone="text-gray-300" isLoading={isLoading} />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function HealthSummaryPill({ label, value, tone, isLoading }) {
+    return (
+        <div className="min-w-28 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-xs text-gray-500">{label}</p>
+            {isLoading ? (
+                <div className="mt-2 h-5 w-8 animate-pulse rounded bg-white/10" />
+            ) : (
+                <p className={`mt-1 text-lg font-semibold ${tone}`}>{value}</p>
+            )}
+        </div>
+    );
+}
+
 function ConnectionGridSkeleton() {
     return Array.from({ length: 3 }).map((_, index) => (
         <Card key={index} className="border-white/10 bg-[#0d1117]/60">
@@ -134,7 +234,7 @@ function ConnectionGridSkeleton() {
     ));
 }
 
-function ConnectionCard({ conn, sessions, onConnect, onDelete }) {
+function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onCheckHealth }) {
     const getActiveSessionCount = (connection) => {
         return sessions.filter(s => (
             s.connectionId === connection.id ||
@@ -144,6 +244,12 @@ function ConnectionCard({ conn, sessions, onConnect, onDelete }) {
 
     const activeCount = getActiveSessionCount(conn);
     const isConnected = activeCount > 0;
+    const healthStatus = getHealthStatus(health);
+    const healthConfig = healthStatusConfig[healthStatus];
+    const HealthIcon = healthConfig.Icon;
+    const checkedAt = health?.checkedAt
+        ? new Date(health.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : null;
 
     return (
         <Card className="group hover:shadow-xl transition-all duration-300 border-white/10 bg-[#0d1117]/60 backdrop-blur-md hover:bg-[#0d1117]/80">
@@ -174,6 +280,31 @@ function ConnectionCard({ conn, sessions, onConnect, onDelete }) {
                     {conn.username}@{conn.host}:{conn.port}
                 </CardDescription>
             </CardHeader>
+            <CardContent className="space-y-3 py-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={healthConfig.badgeClassName}>
+                                <HealthIcon className={`mr-1 h-3 w-3 ${healthStatus === 'checking' ? 'animate-spin' : ''}`} />
+                                {healthConfig.label}
+                            </Badge>
+                        </div>
+                        <p className={`mt-1 text-xs ${healthConfig.detailClassName}`}>
+                            {health?.error || (checkedAt ? `Checked ${checkedAt}` : 'No reachability check yet')}
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 border-white/10 bg-white/[0.04] text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+                        disabled={healthStatus === 'checking'}
+                        onClick={() => onCheckHealth?.(conn.id)}
+                    >
+                        <RefreshCw className={`mr-2 h-3.5 w-3.5 ${healthStatus === 'checking' ? 'animate-spin' : ''}`} />
+                        Check
+                    </Button>
+                </div>
+            </CardContent>
             <CardFooter>
                 <Button
                     className={`w-full transition-all ${isConnected

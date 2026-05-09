@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"go-server/internal/db"
 	"go-server/internal/models"
@@ -21,6 +23,11 @@ import (
 )
 
 var roleIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,49}$`)
+
+const (
+	adminSessionScanCount   = 100
+	adminSessionScanTimeout = 3 * time.Second
+)
 
 var allowedRolePermissions = map[string]struct{}{
 	"manage_users":       {},
@@ -137,9 +144,14 @@ func GetAdminStats(c *gin.Context) {
 	}
 
 	if db.Redis != nil {
-		keys, err := db.Redis.Keys(context.Background(), "session:*").Result()
-		if err == nil {
-			stats.LoggedInUsers = len(keys)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), adminSessionScanTimeout)
+		defer cancel()
+
+		loggedInUsers, err := countRedisSessionKeys(ctx)
+		if err != nil {
+			utils.Log("Failed to count logged-in users", err)
+		} else {
+			stats.LoggedInUsers = loggedInUsers
 		}
 	}
 
@@ -451,29 +463,81 @@ func LogoutUser(c *gin.Context) {
 		return
 	}
 
-	// Invalidate sessions in Redis
-	// We need to find keys for this user.
-	// Redis keys are session:token. Value is userID.
-	// This is inefficient without a reverse index or scanning.
-	// For now, let's scan.
-	var keys []string
-	iter := db.Redis.Scan(context.Background(), 0, "session:*", 0).Iterator()
-	for iter.Next(context.Background()) {
-		key := iter.Val()
-		val, err := db.Redis.Get(context.Background(), key).Int()
-		if err == nil && val == id {
-			keys = append(keys, key)
-		}
-	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminSessionScanTimeout)
+	defer cancel()
 
-	if len(keys) > 0 {
-		db.Redis.Del(context.Background(), keys...)
+	revoked, err := revokeRedisSessionsForUser(ctx, id)
+	if err != nil {
+		utils.Log("Failed to revoke user sessions", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Session store unavailable"})
+		return
 	}
 
 	adminID := c.GetInt("userId")
 	utils.LogActivity(&adminID, "Logout User", idStr, "Success", nil)
 
-	c.JSON(http.StatusOK, gin.H{"message": "User logged out", "sessionsRevoked": len(keys)})
+	c.JSON(http.StatusOK, gin.H{"message": "User logged out", "sessionsRevoked": revoked})
+}
+
+func countRedisSessionKeys(ctx context.Context) (int, error) {
+	if db.Redis == nil {
+		return 0, nil
+	}
+
+	count := 0
+	iter := db.Redis.Scan(ctx, 0, "session:*", adminSessionScanCount).Iterator()
+	for iter.Next(ctx) {
+		count++
+	}
+
+	return count, iter.Err()
+}
+
+func revokeRedisSessionsForUser(ctx context.Context, userID int) (int, error) {
+	if db.Redis == nil {
+		return 0, errors.New("session store unavailable")
+	}
+
+	revoked := 0
+	keys := make([]string, 0, adminSessionScanCount)
+
+	iter := db.Redis.Scan(ctx, 0, "session:*", adminSessionScanCount).Iterator()
+	for iter.Next(ctx) {
+		key := iter.Val()
+		val, err := db.Redis.Get(ctx, key).Int()
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return revoked, err
+			}
+			continue
+		}
+		if val != userID {
+			continue
+		}
+
+		keys = append(keys, key)
+		if len(keys) == cap(keys) {
+			deleted, err := db.Redis.Del(ctx, keys...).Result()
+			if err != nil {
+				return revoked, err
+			}
+			revoked += int(deleted)
+			keys = keys[:0]
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return revoked, err
+	}
+	if len(keys) == 0 {
+		return revoked, nil
+	}
+
+	deleted, err := db.Redis.Del(ctx, keys...).Result()
+	if err != nil {
+		return revoked, err
+	}
+
+	return revoked + int(deleted), nil
 }
 
 func GetAllActiveSessions(c *gin.Context) {

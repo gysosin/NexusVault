@@ -1,6 +1,11 @@
 package api
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"go-server/internal/db"
+)
 
 func TestNormalizeCreateRoleRequestNormalizesIdentity(t *testing.T) {
 	req := createRoleRequest{
@@ -62,5 +67,37 @@ func TestIsAssignableUserRole(t *testing.T) {
 	}
 	if isAssignableUserRole("operators") {
 		t.Fatal("isAssignableUserRole(operators) = true, want false")
+	}
+}
+
+func TestCountRedisSessionKeysWithoutRedis(t *testing.T) {
+	previousRedis := db.Redis
+	t.Cleanup(func() {
+		db.Redis = previousRedis
+	})
+	db.Redis = nil
+
+	count, err := countRedisSessionKeys(context.Background())
+	if err != nil {
+		t.Fatalf("countRedisSessionKeys() error = %v, want nil", err)
+	}
+	if count != 0 {
+		t.Fatalf("countRedisSessionKeys() = %d, want 0", count)
+	}
+}
+
+func TestRevokeRedisSessionsForUserRequiresRedis(t *testing.T) {
+	previousRedis := db.Redis
+	t.Cleanup(func() {
+		db.Redis = previousRedis
+	})
+	db.Redis = nil
+
+	revoked, err := revokeRedisSessionsForUser(context.Background(), 42)
+	if err == nil {
+		t.Fatal("revokeRedisSessionsForUser() error = nil, want session store error")
+	}
+	if revoked != 0 {
+		t.Fatalf("revokeRedisSessionsForUser() revoked = %d, want 0", revoked)
 	}
 }

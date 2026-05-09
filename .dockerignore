@@ -3,8 +3,15 @@ client/node_modules
 client/dist
 dist
 npm-debug.log*
+.env
+.env.*
+!.env.example
 .env.local
 .env.development
 .env.test
+*.log
+server/*.log
+server/server
+server/server_bin
 .git
 .github

@@ -16,6 +16,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { encryptPayload } from '../../api/encryption';
+import { withWebSocketToken } from '../../api/websocket';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SessionRDP({ session, onClose, onFocus, onSessionMetadata, isPreview = false }) {
@@ -236,7 +237,7 @@ export default function SessionRDP({ session, onClose, onFocus, onSessionMetadat
             wsRef.current = null;
         }
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(withWebSocketToken(wsUrl, authToken));
         wsRef.current = ws;
         setStatus('Connecting...');
         lastFrameAtRef.current = Date.now();

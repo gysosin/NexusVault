@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"go-server/internal/db"
+	"go-server/internal/middleware"
 	"go-server/internal/models"
+	"go-server/internal/security"
 	"go-server/internal/service"
 	"go-server/internal/utils"
 
@@ -17,7 +19,7 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		return security.IsOriginAllowed(r)
 	},
 }
 
@@ -44,6 +46,11 @@ type WSMessage struct {
 
 // HandleWebSocket manages the WebSocket connection
 func HandleWebSocket(c *gin.Context) {
+	if _, err := middleware.AuthenticateToken(middleware.TokenFromRequest(c.Request)); err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		utils.Log("Failed to upgrade to WebSocket:", err)
@@ -373,6 +380,11 @@ func HandleWebSocket(c *gin.Context) {
 
 // HandleNotifications manages the WebSocket connection for system notifications
 func HandleNotifications(c *gin.Context) {
+	if _, err := middleware.AuthenticateToken(middleware.TokenFromRequest(c.Request)); err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		utils.Log("Failed to upgrade to WebSocket:", err)

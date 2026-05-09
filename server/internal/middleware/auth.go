@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,7 +26,7 @@ func DecryptPayload() gin.HandlerFunc {
 					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt payload."})
 					return
 				}
-				
+
 				// Replace body with decrypted JSON
 				c.Request.Body = io.NopCloser(strings.NewReader(decrypted))
 				c.Request.ContentLength = int64(len(decrypted))
@@ -69,7 +70,7 @@ func DecryptPayloadMiddleware() gin.HandlerFunc {
 				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt payload."})
 				return
 			}
-			
+
 			// Replace request body with decrypted content
 			c.Request.Body = io.NopCloser(strings.NewReader(decrypted))
 			c.Request.ContentLength = int64(len(decrypted))
@@ -81,30 +82,9 @@ func DecryptPayloadMiddleware() gin.HandlerFunc {
 
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			return
-		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			return
-		}
-
-		tokenString := parts[1]
-		claims, err := utils.VerifyToken(tokenString)
+		claims, err := AuthenticateToken(bearerToken(c.GetHeader("Authorization")))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			return
-		}
-
-		// Check Redis for session validity
-		sessionKey := fmt.Sprintf("session:%s", tokenString)
-		_, err = db.Redis.Get(context.Background(), sessionKey).Result()
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
 			return
 		}
 
@@ -112,4 +92,51 @@ func AuthRequired() gin.HandlerFunc {
 		c.Set("role", claims.Role)
 		c.Next()
 	}
+}
+
+func TokenFromRequest(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+
+	if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+		return token
+	}
+
+	if token := strings.TrimSpace(r.URL.Query().Get("token")); token != "" {
+		return token
+	}
+
+	return strings.TrimSpace(r.URL.Query().Get("access_token"))
+}
+
+func AuthenticateToken(tokenString string) (*utils.Claims, error) {
+	tokenString = strings.TrimSpace(tokenString)
+	if tokenString == "" {
+		return nil, errors.New("token required")
+	}
+
+	claims, err := utils.VerifyToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	if db.Redis == nil {
+		return nil, errors.New("session store unavailable")
+	}
+
+	sessionKey := fmt.Sprintf("session:%s", tokenString)
+	if _, err := db.Redis.Get(context.Background(), sessionKey).Result(); err != nil {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
+func bearerToken(authHeader string) string {
+	parts := strings.Fields(authHeader)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	return parts[1]
 }

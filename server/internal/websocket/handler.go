@@ -177,10 +177,11 @@ func HandleWebSocket(c *gin.Context) {
 
 			// Create Session
 			sessionID := uuid.New().String()
+			connectionID := optionalConnectionID(msg.ConnectionID)
 			session := &service.Session{
 				ID:             sessionID,
 				UserID:         claims.UserID,
-				ConnectionID:   &msg.ConnectionID,
+				ConnectionID:   connectionID,
 				Host:           fields.Host,
 				Port:           fields.Port,
 				Username:       fields.Username,
@@ -365,6 +366,13 @@ func HandleWebSocket(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func optionalConnectionID(id int) *int {
+	if id == 0 {
+		return nil
+	}
+	return &id
 }
 
 // HandleNotifications manages the WebSocket connection for system notifications

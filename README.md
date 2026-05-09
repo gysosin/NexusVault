@@ -57,6 +57,7 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
     - `ALLOW_PUBLIC_REGISTRATION`: set to `true` only when self-service signups are intended. Production defaults to first-user bootstrap only.
     - `AUTH_RATE_LIMIT_REQUESTS`: allowed login/register attempts per client IP window. Defaults to `10`.
     - `AUTH_RATE_LIMIT_WINDOW`: Go duration for the auth attempt window. Defaults to `1m`.
+    - `TRUSTED_PROXIES`: optional comma-separated proxy IP/CIDR allowlist used for `X-Forwarded-For` client IP resolution. Leave unset unless deployed behind known reverse proxies.
     - `SSH_KNOWN_HOSTS_PATH`: OpenSSH `known_hosts` file used to verify SSH server keys.
     - `ALLOW_INSECURE_SSH_HOST_KEYS`: set to `true` only for local development or isolated test environments without host-key verification.
     - `VITE_API_TIMEOUT_MS`: optional frontend API request timeout in milliseconds. Defaults to `15000`.

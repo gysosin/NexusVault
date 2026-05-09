@@ -166,10 +166,20 @@ func validateAccountPassword(password string) error {
 
 func Logout(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
-	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-		token := strings.TrimPrefix(authHeader, "Bearer ")
+	if strings.HasPrefix(authHeader, "Bearer ") && db.Redis != nil {
+		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if token == "" {
+			c.Status(http.StatusNoContent)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), loginSessionStoreTimeout)
+		defer cancel()
+
 		sessionKey := fmt.Sprintf("session:%s", token)
-		db.Redis.Del(context.Background(), sessionKey)
+		if err := db.Redis.Del(ctx, sessionKey).Err(); err != nil {
+			utils.Log("Failed to delete session from Redis", err)
+		}
 	}
 	c.Status(http.StatusNoContent)
 }

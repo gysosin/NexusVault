@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Monitor, X, Plus, Activity, Wifi, Terminal, Folder, ChevronDown } from 'lucide-react';
@@ -6,8 +6,14 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import SessionRDP from './SessionRDP';
-import { SessionTerminal } from './SessionTerminal';
+const SessionRDP = lazy(() => import('./SessionRDP'));
+const SessionTerminal = lazy(() => import('./SessionTerminal').then((module) => ({ default: module.SessionTerminal })));
+
+const PreviewFallback = () => (
+    <div className="h-full w-full bg-[#05070e] flex items-center justify-center text-xs text-gray-500">
+        Loading preview...
+    </div>
+);
 
 function PortalPreview({ session, isActive, parentRect }) {
     if (!parentRect) return null;
@@ -41,22 +47,24 @@ function PortalPreview({ session, isActive, parentRect }) {
             {/* Real Content Preview */}
             <div className="relative w-full h-full bg-black">
                 <div className="absolute inset-0 w-[200%] h-[200%] origin-top-left scale-50 pointer-events-none select-none">
-                    {session.protocol === 'rdp' ? (
-                        <SessionRDP
-                            session={session}
-                            onClose={() => { }}
-                            onFocus={() => { }}
-                            onSessionMetadata={() => { }}
-                            isPreview={true}
-                        />
-                    ) : (
-                        <SessionTerminal
-                            session={session}
-                            isActive={true}
-                            terminalViewVisible={true}
-                            isPreview={true}
-                        />
-                    )}
+                    <Suspense fallback={<PreviewFallback />}>
+                        {session.protocol === 'rdp' ? (
+                            <SessionRDP
+                                session={session}
+                                onClose={() => { }}
+                                onFocus={() => { }}
+                                onSessionMetadata={() => { }}
+                                isPreview={true}
+                            />
+                        ) : (
+                            <SessionTerminal
+                                session={session}
+                                isActive={true}
+                                terminalViewVisible={true}
+                                isPreview={true}
+                            />
+                        )}
+                    </Suspense>
                 </div>
             </div>
         </Motion.div>,

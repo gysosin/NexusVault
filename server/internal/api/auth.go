@@ -34,6 +34,7 @@ type LoginRequest struct {
 
 const minAccountPasswordLength = 8
 const loginSessionStoreTimeout = 2 * time.Second
+const authDatabaseTimeout = 3 * time.Second
 
 func Register(c *gin.Context) {
 	var req RegisterRequest
@@ -50,8 +51,11 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), authDatabaseTimeout)
+	defer cancel()
+
 	var existingUserCount int
-	if err := db.DB.Get(&existingUserCount, "SELECT COUNT(*) FROM users"); err != nil {
+	if err := db.DB.GetContext(ctx, &existingUserCount, "SELECT COUNT(*) FROM users"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to validate registration policy."})
 		return
 	}
@@ -70,7 +74,7 @@ func Register(c *gin.Context) {
 
 	var user models.User
 	query := `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role`
-	err = db.DB.QueryRowx(query, req.Username, req.Email, string(hashedPassword), decision.Role).StructScan(&user)
+	err = db.DB.QueryRowxContext(ctx, query, req.Username, req.Email, string(hashedPassword), decision.Role).StructScan(&user)
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
@@ -103,9 +107,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), authDatabaseTimeout)
+	defer cancel()
+
 	var user models.User
 	query := `SELECT id, username, email, password, role FROM users WHERE username = $1 OR email = $2 LIMIT 1`
-	err := db.DB.Get(&user, query, identifier, strings.ToLower(identifier))
+	err := db.DB.GetContext(ctx, &user, query, identifier, strings.ToLower(identifier))
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials."})
@@ -205,7 +212,10 @@ func Me(c *gin.Context) {
 
 	var user models.User
 	query := `SELECT id, username, email, role, created_at FROM users WHERE id = $1`
-	err := db.DB.Get(&user, query, userID)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), authDatabaseTimeout)
+	defer cancel()
+
+	err := db.DB.GetContext(ctx, &user, query, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return

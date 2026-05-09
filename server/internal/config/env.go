@@ -19,6 +19,7 @@ type Config struct {
 	DatabaseURL             string
 	JWTSecret               string
 	APISecret               string
+	CredentialSecret        string
 	NodeEnv                 string
 	RedisURL                string
 	AllowedOrigins          string
@@ -42,11 +43,14 @@ func InitConfig() {
 	allowPublicRegistrationDefault := !isProduction
 	allowInsecureSSHHostKeyDefault := !isProduction
 
+	apiSecret := getEnv("API_SECRET", "default_api_secret")
+
 	Envs = Config{
 		Port:                    getEnv("PORT", "3000"),
 		DatabaseURL:             getEnv("DATABASE_URL", ""),
 		JWTSecret:               getEnv("JWT_SECRET", "default_secret"),
-		APISecret:               getEnv("API_SECRET", "default_api_secret"),
+		APISecret:               apiSecret,
+		CredentialSecret:        getEnv("CREDENTIAL_SECRET", apiSecret),
 		NodeEnv:                 nodeEnv,
 		RedisURL:                getEnv("REDIS_URL", "redis://localhost:6379"),
 		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", ""),
@@ -128,6 +132,9 @@ func (c Config) Validate() error {
 	}
 	if isWeakProductionSecret(c.APISecret, "default_api_secret") {
 		errs = append(errs, fmt.Errorf("API_SECRET must be set to at least %d non-default characters in production", minProductionSecretLength))
+	}
+	if isWeakProductionSecret(c.CredentialSecret, "default_api_secret") {
+		errs = append(errs, fmt.Errorf("CREDENTIAL_SECRET must be set to at least %d non-default characters in production", minProductionSecretLength))
 	}
 
 	return errors.Join(errs...)

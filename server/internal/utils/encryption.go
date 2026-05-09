@@ -11,8 +11,19 @@ import (
 	"go-server/internal/config"
 )
 
-// Decrypt decrypts a base64 encoded string encrypted with CryptoJS (AES-256-CBC, MD5 KDF)
-func Decrypt(ciphertextB64 string) (string, error) {
+func DecryptPayload(ciphertextB64 string) (string, error) {
+	return decryptWithSecret(ciphertextB64, config.Envs.APISecret)
+}
+
+func EncryptCredential(plaintext string) (string, error) {
+	return encryptWithSecret(plaintext, config.Envs.CredentialSecret)
+}
+
+func DecryptCredential(ciphertextB64 string) (string, error) {
+	return decryptWithSecret(ciphertextB64, config.Envs.CredentialSecret)
+}
+
+func decryptWithSecret(ciphertextB64 string, secret string) (string, error) {
 	if ciphertextB64 == "" {
 		return "", nil
 	}
@@ -29,7 +40,7 @@ func Decrypt(ciphertextB64 string) (string, error) {
 	salt := data[8:16]
 	ciphertext := data[16:]
 
-	key, iv := deriveKeyAndIV(config.Envs.APISecret, salt)
+	key, iv := deriveKeyAndIV(secret, salt)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -51,14 +62,13 @@ func Decrypt(ciphertextB64 string) (string, error) {
 	return string(plaintext), nil
 }
 
-// Encrypt encrypts plaintext using CryptoJS compatible format (AES-256-CBC, MD5 KDF)
-func Encrypt(plaintext string) (string, error) {
+func encryptWithSecret(plaintext string, secret string) (string, error) {
 	salt := make([]byte, 8)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	key, iv := deriveKeyAndIV(config.Envs.APISecret, salt)
+	key, iv := deriveKeyAndIV(secret, salt)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

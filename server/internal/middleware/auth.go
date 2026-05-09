@@ -21,7 +21,7 @@ func DecryptPayload() gin.HandlerFunc {
 		var body map[string]interface{}
 		if err := c.ShouldBindBodyWith(&body, binding.JSON); err == nil {
 			if payload, ok := body["payload"].(string); ok {
-				decrypted, err := utils.Decrypt(payload)
+				decrypted, err := utils.DecryptPayload(payload)
 				if err != nil {
 					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt payload."})
 					return
@@ -65,7 +65,7 @@ func DecryptPayloadMiddleware() gin.HandlerFunc {
 		}
 
 		if payload, ok := rawBody["payload"].(string); ok {
-			decrypted, err := utils.Decrypt(payload)
+			decrypted, err := utils.DecryptPayload(payload)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt payload."})
 				return

@@ -3,11 +3,16 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
+	"time"
 
 	"go-server/internal/db"
 	"go-server/internal/utils"
+)
+
+const (
+	notificationChannel        = "system:notifications"
+	notificationPublishTimeout = 2 * time.Second
 )
 
 type NotificationService struct {
@@ -34,33 +39,51 @@ func (s *NotificationService) RemoveSubscriber(conn *SafeConn) {
 }
 
 func (s *NotificationService) Broadcast(message interface{}) {
-	// Publish to Redis instead of direct iteration
-	ctx := context.Background()
 	jsonMsg, err := json.Marshal(message)
 	if err != nil {
 		utils.Log("Failed to marshal notification message:", err)
 		return
 	}
 
-	err = db.Redis.Publish(ctx, "system:notifications", jsonMsg).Err()
-	if err != nil {
+	if db.Redis == nil {
+		s.broadcastToLocalSubscribers(string(jsonMsg))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), notificationPublishTimeout)
+	defer cancel()
+
+	if err := db.Redis.Publish(ctx, notificationChannel, jsonMsg).Err(); err != nil {
 		utils.Log("Failed to publish notification to Redis:", err)
+		s.broadcastToLocalSubscribers(string(jsonMsg))
 	}
 }
 
 func (s *NotificationService) InitRedisSub() {
+	if db.Redis == nil {
+		utils.Log("NotificationService Redis subscription skipped: Redis unavailable")
+		return
+	}
+
 	go func() {
 		ctx := context.Background()
-		pubsub := db.Redis.Subscribe(ctx, "system:notifications")
+		pubsub := db.Redis.Subscribe(ctx, notificationChannel)
 		defer pubsub.Close()
 
-		ch := pubsub.Channel()
+		subscribeCtx, cancel := context.WithTimeout(ctx, notificationPublishTimeout)
+		if _, err := pubsub.Receive(subscribeCtx); err != nil {
+			cancel()
+			utils.Log("NotificationService Redis subscription failed:", err)
+			return
+		}
+		cancel()
 
+		ch := pubsub.Channel()
 		for msg := range ch {
 			s.broadcastToLocalSubscribers(msg.Payload)
 		}
 	}()
-	log.Println("NotificationService subscribed to Redis channel: system:notifications")
+	utils.Log("NotificationService subscribed to Redis channel:", notificationChannel)
 }
 
 func (s *NotificationService) broadcastToLocalSubscribers(payload string) {

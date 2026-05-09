@@ -66,7 +66,7 @@ func CreateConnection(c *gin.Context) {
 	var encryptedPassword string
 	if req.Password != "" {
 		var err error
-		encryptedPassword, err = utils.Encrypt(req.Password)
+		encryptedPassword, err = utils.EncryptCredential(req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt password"})
 			return
@@ -146,7 +146,7 @@ func UpdateConnection(c *gin.Context) {
 
 	password := existing.Password
 	if req.Password != "" {
-		encrypted, err := utils.Encrypt(req.Password)
+		encrypted, err := utils.EncryptCredential(req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt password"})
 			return

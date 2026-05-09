@@ -99,7 +99,7 @@ func HandleWebSocket(c *gin.Context) {
 			// Handle connect
 			// Decrypt payload if present
 			if msg.Payload != "" {
-				decrypted, err := utils.Decrypt(msg.Payload)
+				decrypted, err := utils.DecryptPayload(msg.Payload)
 				if err != nil {
 					sendError("Failed to decrypt connection payload.")
 					continue
@@ -141,7 +141,7 @@ func HandleWebSocket(c *gin.Context) {
 				msg.Port = conn.Port
 				utils.Log("Connection lookup successful", "ID:", msg.ConnectionID, "HasPassword:", conn.HasPassword, "Password len:", len(conn.Password))
 				if conn.Password != "" {
-					decryptedPass, err := utils.Decrypt(conn.Password)
+					decryptedPass, err := utils.DecryptCredential(conn.Password)
 					if err != nil {
 						utils.Log("Password decryption failed:", err)
 						sendError("Failed to decrypt saved password.")

@@ -38,8 +38,8 @@ func main() {
 	{
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", apiPkg.Register)
-			auth.POST("/login", apiPkg.Login)
+			auth.POST("/register", middleware.IPRateLimit(config.Envs.AuthRateLimitRequests, config.Envs.AuthRateLimitWindow), apiPkg.Register)
+			auth.POST("/login", middleware.IPRateLimit(config.Envs.AuthRateLimitRequests, config.Envs.AuthRateLimitWindow), apiPkg.Login)
 			auth.POST("/logout", apiPkg.Logout)
 			auth.GET("/me", middleware.AuthRequired(), apiPkg.Me)
 		}

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -21,6 +23,8 @@ type Config struct {
 	RedisURL                string
 	AllowedOrigins          string
 	AllowPublicRegistration bool
+	AuthRateLimitRequests   int
+	AuthRateLimitWindow     time.Duration
 }
 
 var Envs Config
@@ -43,6 +47,8 @@ func InitConfig() {
 		RedisURL:                getEnv("REDIS_URL", "redis://localhost:6379"),
 		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", ""),
 		AllowPublicRegistration: getBoolEnv("ALLOW_PUBLIC_REGISTRATION", allowPublicRegistrationDefault),
+		AuthRateLimitRequests:   getIntEnv("AUTH_RATE_LIMIT_REQUESTS", 10),
+		AuthRateLimitWindow:     getDurationEnv("AUTH_RATE_LIMIT_WINDOW", time.Minute),
 	}
 
 	if err := Envs.Validate(); err != nil {
@@ -71,6 +77,32 @@ func getBoolEnv(key string, fallback bool) bool {
 	default:
 		return fallback
 	}
+}
+
+func getIntEnv(key string, fallback int) int {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func getDurationEnv(key string, fallback time.Duration) time.Duration {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	parsed, err := time.ParseDuration(strings.TrimSpace(value))
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
 }
 
 func (c Config) Validate() error {

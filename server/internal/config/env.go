@@ -1,11 +1,16 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
+
+const minProductionSecretLength = 32
 
 type Config struct {
 	Port           string
@@ -34,6 +39,10 @@ func InitConfig() {
 		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379"),
 		AllowedOrigins: getEnv("ALLOWED_ORIGINS", ""),
 	}
+
+	if err := Envs.Validate(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
+	}
 }
 
 func getEnv(key, fallback string) string {
@@ -41,4 +50,31 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func (c Config) Validate() error {
+	if !strings.EqualFold(strings.TrimSpace(c.NodeEnv), "production") {
+		return nil
+	}
+
+	var errs []error
+	if strings.TrimSpace(c.DatabaseURL) == "" {
+		errs = append(errs, errors.New("DATABASE_URL is required in production"))
+	}
+	if strings.TrimSpace(c.RedisURL) == "" {
+		errs = append(errs, errors.New("REDIS_URL is required in production"))
+	}
+	if isWeakProductionSecret(c.JWTSecret, "default_secret") {
+		errs = append(errs, fmt.Errorf("JWT_SECRET must be set to at least %d non-default characters in production", minProductionSecretLength))
+	}
+	if isWeakProductionSecret(c.APISecret, "default_api_secret") {
+		errs = append(errs, fmt.Errorf("API_SECRET must be set to at least %d non-default characters in production", minProductionSecretLength))
+	}
+
+	return errors.Join(errs...)
+}
+
+func isWeakProductionSecret(value string, defaultValue string) bool {
+	value = strings.TrimSpace(value)
+	return value == "" || value == defaultValue || len(value) < minProductionSecretLength
 }

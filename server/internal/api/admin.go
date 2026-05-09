@@ -57,8 +57,11 @@ func GetSystemSettings(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
 	var settings []models.SystemSetting
-	err := db.DB.Select(&settings, "SELECT * FROM system_settings")
+	err := db.DB.SelectContext(ctx, &settings, "SELECT * FROM system_settings")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
 		return
@@ -177,6 +180,9 @@ func GetActivityLogs(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
 	var logs []activityLogResponse
 	query := `
 		SELECT al.id, al.user_id, u.username, al.action, al.target, al.status, al.details, to_char(al.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
@@ -185,7 +191,7 @@ func GetActivityLogs(c *gin.Context) {
 		ORDER BY al.created_at DESC
 		LIMIT 200
 	`
-	if err := db.DB.Select(&logs, query); err != nil {
+	if err := db.DB.SelectContext(ctx, &logs, query); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch activity logs"})
 		return
 	}
@@ -198,8 +204,11 @@ func GetUsers(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
 	var users []models.User
-	err := db.DB.Select(&users, "SELECT id, username, email, role, created_at FROM users ORDER BY id")
+	err := db.DB.SelectContext(ctx, &users, "SELECT id, username, email, role, created_at FROM users ORDER BY id")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
@@ -329,8 +338,11 @@ func GetRoles(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
 	var roles []models.Role
-	err := db.DB.Select(&roles, "SELECT id, name, description, permissions, created_at FROM roles ORDER BY created_at DESC")
+	err := db.DB.SelectContext(ctx, &roles, "SELECT id, name, description, permissions, created_at FROM roles ORDER BY created_at DESC")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch roles"})
 		return

@@ -59,6 +59,22 @@ func TestNormalizeSavedRejectsBlankHost(t *testing.T) {
 	}
 }
 
+func TestNormalizeSavedRejectsMalformedHosts(t *testing.T) {
+	tests := []string{
+		"https://host.internal",
+		"host.internal/path",
+		"user@host.internal",
+		"host internal",
+		"host\ninternal",
+	}
+
+	for _, host := range tests {
+		if _, err := NormalizeSaved("Prod", host, 22, "deploy", TypeSSH); err == nil {
+			t.Fatalf("NormalizeSaved(host=%q) error = nil, want error", host)
+		}
+	}
+}
+
 func TestNormalizeSavedRejectsInvalidType(t *testing.T) {
 	if _, err := NormalizeSaved("Prod", "host.internal", 22, "deploy", "telnet"); err == nil {
 		t.Fatal("NormalizeSaved() error = nil, want error")

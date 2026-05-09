@@ -3,6 +3,7 @@ package connection
 import (
 	"errors"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -43,6 +44,9 @@ func normalize(name, host string, port int, username, connType string, requireNa
 	if fields.Host == "" {
 		return Fields{}, errors.New("host is required")
 	}
+	if isMalformedHost(fields.Host) {
+		return Fields{}, errors.New("host must not include a scheme, path, userinfo, or whitespace")
+	}
 	if fields.Username == "" {
 		return Fields{}, errors.New("username is required")
 	}
@@ -71,4 +75,13 @@ func normalize(name, host string, port int, username, connType string, requireNa
 	}
 
 	return fields, nil
+}
+
+func isMalformedHost(host string) bool {
+	if strings.Contains(host, "://") || strings.ContainsAny(host, "/\\@") {
+		return true
+	}
+	return strings.ContainsFunc(host, func(r rune) bool {
+		return unicode.IsSpace(r) || unicode.IsControl(r)
+	})
 }

@@ -14,6 +14,7 @@ export function UserManagement() {
     const [users, setUsers] = useState([]);
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'user' });
+    const [addUserError, setAddUserError] = useState('');
     const [loading, setLoading] = useState(true);
     const canCreateUser = Boolean(
         newUser.username.trim()
@@ -45,6 +46,7 @@ export function UserManagement() {
 
     const handleAddUser = async () => {
         if (!canCreateUser) return;
+        setAddUserError('');
 
         try {
             const token = localStorage.getItem('auth_token');
@@ -60,9 +62,14 @@ export function UserManagement() {
                 fetchUsers();
                 setIsAddUserOpen(false);
                 setNewUser({ username: '', email: '', password: '', role: 'user' });
+                return;
             }
+
+            const data = await res.json().catch(() => ({}));
+            setAddUserError(data.error || 'Failed to create user.');
         } catch (err) {
             console.error('Failed to create user', err);
+            setAddUserError('Failed to create user.');
         }
     };
 
@@ -192,7 +199,13 @@ export function UserManagement() {
                 </Table>
             </div>
 
-            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <Dialog
+                open={isAddUserOpen}
+                onOpenChange={(open) => {
+                    setIsAddUserOpen(open);
+                    if (!open) setAddUserError('');
+                }}
+            >
                 <DialogContent className="bg-[#1a1f2e] border-white/10 text-white">
                     <DialogHeader>
                         <DialogTitle>Add New User</DialogTitle>
@@ -248,6 +261,11 @@ export function UserManagement() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        {addUserError && (
+                            <p className="rounded border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                {addUserError}
+                            </p>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="border-white/10 hover:bg-white/5 text-gray-300">

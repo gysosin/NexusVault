@@ -104,6 +104,7 @@ func Login(c *gin.Context) {
 	}
 
 	if identifier == "" {
+		logFailedLoginAttempt("", "missing identifier")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Identifier (username or email) required"})
 		return
 	}
@@ -116,6 +117,7 @@ func Login(c *gin.Context) {
 	err := db.DB.GetContext(ctx, &user, query, identifier, strings.ToLower(identifier))
 
 	if err == sql.ErrNoRows {
+		logFailedLoginAttempt(identifier, "invalid credentials")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials."})
 		return
 	} else if err != nil {
@@ -124,6 +126,7 @@ func Login(c *gin.Context) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		logFailedLoginAttempt(identifier, "invalid credentials")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials."})
 		return
 	}
@@ -147,6 +150,16 @@ func Login(c *gin.Context) {
 		"token":     token,
 		"expiresIn": "24h",
 		"user":      user,
+	})
+}
+
+func logFailedLoginAttempt(identifier string, reason string) {
+	target := "Unknown"
+	if strings.TrimSpace(identifier) != "" {
+		target = "Account"
+	}
+	utils.LogActivity(nil, "Login", target, "Failed", map[string]string{
+		"reason": reason,
 	})
 }
 

@@ -82,6 +82,12 @@ func main() {
 			sessions.GET("/history/:sessionId", apiPkg.GetSessionDetails)
 		}
 
+		security := api.Group("/security")
+		security.Use(middleware.AuthRequired())
+		{
+			security.GET("/failed-logins/trend", apiPkg.GetFailedLoginTrend)
+		}
+
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthRequired())
 		admin.Use(middleware.RequireRole("admin"))

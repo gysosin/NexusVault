@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSession } from '../context/SessionContext';
 import * as connectionApi from '../api/connections';
 import * as sessionApi from '../api/sessions';
+import * as securityApi from '../api/security';
 
 export const DashboardPage = ({ setView }) => {
     const { sessions, createSession } = useSession();
@@ -22,6 +23,9 @@ export const DashboardPage = ({ setView }) => {
     const [recentSessions, setRecentSessions] = useState([]);
     const [isLoadingRecentSessions, setIsLoadingRecentSessions] = useState(true);
     const [recentSessionsError, setRecentSessionsError] = useState(null);
+    const [failedLoginTrend, setFailedLoginTrend] = useState([]);
+    const [isLoadingFailedLoginTrend, setIsLoadingFailedLoginTrend] = useState(true);
+    const [failedLoginTrendError, setFailedLoginTrendError] = useState(null);
 
     const fetchConnections = useCallback(async () => {
         setIsLoadingConnections(true);
@@ -58,6 +62,24 @@ export const DashboardPage = ({ setView }) => {
     useEffect(() => {
         fetchRecentSessions();
     }, [fetchRecentSessions]);
+
+    const fetchFailedLoginTrend = useCallback(async () => {
+        setIsLoadingFailedLoginTrend(true);
+        setFailedLoginTrendError(null);
+        try {
+            const data = await securityApi.getFailedLoginTrend();
+            setFailedLoginTrend(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch failed login trend', err);
+            setFailedLoginTrendError(err.message || 'Failed to load failed login trend.');
+        } finally {
+            setIsLoadingFailedLoginTrend(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchFailedLoginTrend();
+    }, [fetchFailedLoginTrend]);
 
     const handleAddConnection = async (newConnection) => {
         try {
@@ -160,6 +182,10 @@ export const DashboardPage = ({ setView }) => {
                 isLoadingRecentSessions={isLoadingRecentSessions}
                 recentSessionsError={recentSessionsError}
                 onRefreshRecentSessions={fetchRecentSessions}
+                failedLoginTrend={failedLoginTrend}
+                isLoadingFailedLoginTrend={isLoadingFailedLoginTrend}
+                failedLoginTrendError={failedLoginTrendError}
+                onRefreshFailedLoginTrend={fetchFailedLoginTrend}
                 activeSession={null}
             />
 

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -72,6 +72,10 @@ export function Dashboard({
     isLoadingRecentSessions = false,
     recentSessionsError = null,
     onRefreshRecentSessions,
+    failedLoginTrend = [],
+    isLoadingFailedLoginTrend = false,
+    failedLoginTrendError = null,
+    onRefreshFailedLoginTrend,
 }) {
     const [search, setSearch] = useState('');
     const [quickLaunchQuery, setQuickLaunchQuery] = useState('');
@@ -145,6 +149,13 @@ export function Dashboard({
             <ConnectionRiskSummary summary={riskSummary} isLoading={isLoading} />
 
             <ProtocolUtilizationChart rows={protocolUtilization} isLoading={isLoading} total={connections.length} />
+
+            <FailedLoginTrend
+                trend={failedLoginTrend}
+                isLoading={isLoadingFailedLoginTrend}
+                error={failedLoginTrendError}
+                onRefresh={onRefreshFailedLoginTrend}
+            />
 
             <RecentSessionTimeline
                 sessions={recentSessions}
@@ -464,6 +475,83 @@ function ProtocolUtilizationChart({ rows, isLoading, total }) {
             </CardContent>
         </Card>
     );
+}
+
+function FailedLoginTrend({ trend, isLoading, error, onRefresh }) {
+    const maxCount = Math.max(1, ...trend.map((point) => point.count || 0));
+    const total = trend.reduce((sum, point) => sum + (point.count || 0), 0);
+
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                        <ShieldX className="h-4 w-4 text-red-300" />
+                        Failed login trend
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-sm text-gray-400">
+                        Seven-day authentication failure volume from audit events.
+                    </CardDescription>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-fit border-white/10 bg-white/[0.04] text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                </Button>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                        {error}
+                    </div>
+                )}
+                {!error && isLoading && (
+                    <div className="h-28 animate-pulse rounded-md border border-white/10 bg-white/[0.03]" />
+                )}
+                {!error && !isLoading && trend.length === 0 && (
+                    <div className="rounded-md border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-gray-400">
+                        No failed login data available yet.
+                    </div>
+                )}
+                {!error && !isLoading && trend.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="flex items-end gap-2">
+                            {trend.map((point) => (
+                                <div key={point.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                                    <div className="flex h-24 w-full items-end rounded-md bg-white/[0.03] px-1">
+                                        <div
+                                            className="w-full rounded-t bg-red-400"
+                                            style={{ height: `${Math.max(6, Math.round(((point.count || 0) / maxCount) * 100))}%` }}
+                                            title={`${point.date}: ${point.count} failed logins`}
+                                        />
+                                    </div>
+                                    <div className="text-center text-[11px] text-gray-500">
+                                        {formatTrendDay(point.date)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300">
+                            {total} failed {total === 1 ? 'attempt' : 'attempts'} in the last seven days
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function formatTrendDay(value) {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+    return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function RiskMetric({ label, value, isLoading }) {

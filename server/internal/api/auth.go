@@ -37,6 +37,10 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := normalizeRegisterRequest(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	var existingUserCount int
 	if err := db.DB.Get(&existingUserCount, "SELECT COUNT(*) FROM users"); err != nil {
@@ -128,6 +132,20 @@ func Login(c *gin.Context) {
 		"expiresIn": "24h",
 		"user":      user,
 	})
+}
+
+func normalizeRegisterRequest(req *RegisterRequest) error {
+	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+
+	if req.Username == "" {
+		return errors.New("username is required")
+	}
+	if req.Email == "" {
+		return errors.New("email is required")
+	}
+
+	return nil
 }
 
 func Logout(c *gin.Context) {

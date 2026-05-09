@@ -20,3 +20,36 @@ func TestPersistLoginSessionRequiresRedis(t *testing.T) {
 		t.Fatal("persistLoginSession() error = nil, want session store error")
 	}
 }
+
+func TestNormalizeRegisterRequestTrimsIdentityFields(t *testing.T) {
+	req := RegisterRequest{
+		Username: "  alice  ",
+		Email:    "  ALICE@Example.COM  ",
+		Password: " passphrase ",
+	}
+
+	if err := normalizeRegisterRequest(&req); err != nil {
+		t.Fatalf("normalizeRegisterRequest() error = %v, want nil", err)
+	}
+	if req.Username != "alice" {
+		t.Fatalf("Username = %q, want alice", req.Username)
+	}
+	if req.Email != "alice@example.com" {
+		t.Fatalf("Email = %q, want alice@example.com", req.Email)
+	}
+	if req.Password != " passphrase " {
+		t.Fatalf("Password = %q, want original password preserved", req.Password)
+	}
+}
+
+func TestNormalizeRegisterRequestRejectsBlankUsername(t *testing.T) {
+	req := RegisterRequest{
+		Username: "   ",
+		Email:    "alice@example.com",
+		Password: "passphrase",
+	}
+
+	if err := normalizeRegisterRequest(&req); err == nil {
+		t.Fatal("normalizeRegisterRequest() error = nil, want blank username error")
+	}
+}

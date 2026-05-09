@@ -148,13 +148,10 @@ export const SessionProvider = ({ children }) => {
 
         let ws = null;
         let reconnectTimeout = null;
+        let shouldReconnect = true;
 
         const connect = () => {
             ws = new WebSocket(withWebSocketToken(wsUrl, token));
-
-            ws.onopen = () => {
-                console.log('Notification WS connected');
-            };
 
             ws.onmessage = (event) => {
                 try {
@@ -172,14 +169,16 @@ export const SessionProvider = ({ children }) => {
             };
 
             ws.onclose = () => {
-                console.log('Notification WS disconnected, reconnecting...');
-                reconnectTimeout = setTimeout(connect, 3000);
+                if (shouldReconnect) {
+                    reconnectTimeout = setTimeout(connect, 3000);
+                }
             };
         };
 
         connect();
 
         return () => {
+            shouldReconnect = false;
             if (ws) ws.close();
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };

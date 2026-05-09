@@ -53,6 +53,8 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
     - `REDIS_URL`: Redis connection string.
     - `ALLOWED_ORIGINS`: comma-separated browser origins allowed for CORS/WebSockets.
     - `ALLOW_PUBLIC_REGISTRATION`: set to `true` only when self-service signups are intended. Production defaults to first-user bootstrap only.
+    - `AUTH_RATE_LIMIT_REQUESTS`: allowed login/register attempts per client IP window. Defaults to `10`.
+    - `AUTH_RATE_LIMIT_WINDOW`: Go duration for the auth attempt window. Defaults to `1m`.
 
 ## 💻 Development Workflow
 
@@ -87,6 +89,7 @@ Access the application at `http://localhost:3000`.
 
 Production mode fails fast if `JWT_SECRET`, `API_SECRET`, `DATABASE_URL`, or `REDIS_URL` are missing or unsafe.
 The first registered user bootstraps as `admin`; subsequent public registration is disabled in production unless `ALLOW_PUBLIC_REGISTRATION=true`.
+Login and registration endpoints are rate limited per client IP. Tune `AUTH_RATE_LIMIT_REQUESTS` and `AUTH_RATE_LIMIT_WINDOW` for your threat model and reverse-proxy topology.
 
 ## 🐳 Docker Deployment
 

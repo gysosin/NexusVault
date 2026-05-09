@@ -2,16 +2,10 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import * as sessionApi from '../api/sessions';
 import { withWebSocketToken } from '../api/websocket';
 import { useAuth } from './AuthContext';
+import { createSessionId } from '../lib/sessionId';
 
 const SessionContext = createContext(null);
 const SESSION_STORAGE_PREFIX = 'active_server_sessions';
-
-const makeId = () => {
-    if (typeof crypto?.randomUUID === 'function') {
-        return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
 
 export const SessionProvider = ({ children }) => {
     const { token, user } = useAuth();
@@ -108,7 +102,7 @@ export const SessionProvider = ({ children }) => {
             const restoredSessions = data
                 .filter((s) => idsToRestore.has(s.id))
                 .map((s) => ({
-                    id: makeId(),
+                    id: createSessionId(),
                     serverId: s.id,
                     mode: 'resume',
                     protocol: s.protocol || s.type || 'ssh',
@@ -190,7 +184,7 @@ export const SessionProvider = ({ children }) => {
         }
 
         const session = {
-            id: makeId(),
+            id: createSessionId(),
             mode: 'connect',
             protocol: connectionDetails.type || 'ssh',
             host: connectionDetails.host,

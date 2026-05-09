@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
+import { buildConnectionRiskSummary } from '@/lib/connectionRisk';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -86,6 +87,10 @@ export function Dashboard({
         () => connections.filter((connection) => connection.isFavorite),
         [connections]
     );
+    const riskSummary = useMemo(
+        () => buildConnectionRiskSummary(connections),
+        [connections]
+    );
 
     const filtered = connections.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -116,6 +121,8 @@ export function Dashboard({
             />
 
             <ConnectionHealthSnapshot summary={healthSummary} isLoading={isLoading} />
+
+            <ConnectionRiskSummary summary={riskSummary} isLoading={isLoading} />
 
             <RecentSessionTimeline
                 sessions={recentSessions}
@@ -248,6 +255,84 @@ function HealthSummaryPill({ label, value, tone, isLoading }) {
                 <div className="mt-2 h-5 w-8 animate-pulse rounded bg-white/10" />
             ) : (
                 <p className={`mt-1 text-lg font-semibold ${tone}`}>{value}</p>
+            )}
+        </div>
+    );
+}
+
+function ConnectionRiskSummary({ summary, isLoading }) {
+    const postureLabel = summary.totalRiskyConnections === 0 ? 'Clear' : 'Review needed';
+    const postureClassName = summary.totalRiskyConnections === 0
+        ? 'border-green-500/30 bg-green-500/10 text-green-300'
+        : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                        <ShieldAlert className="h-4 w-4 text-amber-300" />
+                        Connection risk summary
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-sm text-gray-400">
+                        Highlights saved targets that need credential or access review.
+                    </CardDescription>
+                </div>
+                <Badge variant="outline" className={`w-fit ${postureClassName}`}>
+                    {postureLabel}
+                </Badge>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                    <RiskMetric label="Missing credentials" value={summary.missingCredentialCount} isLoading={isLoading} />
+                    <RiskMetric label="Privileged usernames" value={summary.privilegedUsernameCount} isLoading={isLoading} />
+                    <RiskMetric label="RDP targets" value={summary.rdpConnectionCount} isLoading={isLoading} />
+                </div>
+
+                {isLoading ? (
+                    <div className="h-16 animate-pulse rounded-md border border-white/10 bg-white/[0.03]" />
+                ) : summary.totalConnections === 0 ? (
+                    <div className="rounded-md border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-gray-400">
+                        Add connections to start risk review.
+                    </div>
+                ) : summary.topRisks.length === 0 ? (
+                    <div className="rounded-md border border-green-500/20 bg-green-500/[0.06] px-4 py-4 text-sm text-green-200">
+                        No immediate connection risks detected from saved metadata.
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {summary.topRisks.map(({ connection, reasons }) => (
+                            <div key={connection.id} className="flex flex-col gap-2 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-white">{connection.name}</p>
+                                    <p className="mt-1 truncate font-mono text-xs text-amber-100/70">
+                                        {connection.username}@{connection.host}:{connection.port}
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {reasons.map((reason) => (
+                                        <Badge key={reason} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">
+                                            {reason}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function RiskMetric({ label, value, isLoading }) {
+    return (
+        <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-xs text-gray-500">{label}</p>
+            {isLoading ? (
+                <div className="mt-2 h-5 w-8 animate-pulse rounded bg-white/10" />
+            ) : (
+                <p className="mt-1 text-lg font-semibold text-white">{value}</p>
             )}
         </div>
     );

@@ -9,7 +9,7 @@ RUN npm ci
 COPY client/ ./
 RUN npm run build
 
-FROM golang:1.24.10-alpine AS server-build
+FROM golang:1.25.10-alpine AS server-build
 WORKDIR /src/server
 
 RUN apk add --no-cache build-base

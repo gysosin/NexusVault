@@ -23,13 +23,13 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Shadcn UI, xterm.js, Framer Motion
-- **Backend**: Go 1.24, Gin, gorilla/websocket, sqlx, go-redis
+- **Backend**: Go 1.25.10, Gin, gorilla/websocket, sqlx, go-redis
 - **Remote Access**: `golang.org/x/crypto/ssh` and vendored `grdp`
 - **Database/Cache**: PostgreSQL 16 and Redis 7
 
 ## 📋 Prerequisites
 
-- Go 1.24+
+- Go 1.25.10+
 - Node.js 18+ and npm for the frontend
 - Docker and Docker Compose for local PostgreSQL/Redis
 

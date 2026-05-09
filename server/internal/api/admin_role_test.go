@@ -55,3 +55,12 @@ func TestIsSystemRole(t *testing.T) {
 		t.Fatal("isSystemRole(operators) = true, want false")
 	}
 }
+
+func TestIsAssignableUserRole(t *testing.T) {
+	if !isAssignableUserRole("viewer") {
+		t.Fatal("isAssignableUserRole(viewer) = false, want true")
+	}
+	if isAssignableUserRole("operators") {
+		t.Fatal("isAssignableUserRole(operators) = true, want false")
+	}
+}

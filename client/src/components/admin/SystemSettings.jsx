@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Save } from 'lucide-react';
+import { requestJson } from '@/api/client';
 
 export function SystemSettings() {
     const [settings, setSettings] = useState({
@@ -23,14 +24,8 @@ export function SystemSettings() {
 
     const fetchSettings = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/settings', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setSettings(prev => ({ ...prev, ...data }));
-            }
+            const data = await requestJson('/api/admin/settings');
+            setSettings(prev => ({ ...prev, ...data }));
         } catch (err) {
             console.error('Failed to fetch settings', err);
         } finally {
@@ -41,27 +36,20 @@ export function SystemSettings() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/settings', {
+            await requestJson('/api/admin/settings', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(settings)
+                body: settings
             });
-            if (res.ok) {
-                toast({
-                    title: "Settings saved",
-                    description: "System settings have been updated successfully.",
-                    variant: "success"
-                });
-            }
+            toast({
+                title: "Settings saved",
+                description: "System settings have been updated successfully.",
+                variant: "success"
+            });
         } catch (err) {
             console.error('Failed to save settings', err);
             toast({
                 title: "Error",
-                description: "Failed to save settings.",
+                description: err.message || "Failed to save settings.",
                 variant: "destructive"
             });
         } finally {

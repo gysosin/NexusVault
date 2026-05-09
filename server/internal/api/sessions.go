@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -73,8 +74,14 @@ func GetSessionHistory(c *gin.Context) {
 	args := []interface{}{userID}
 
 	if connectionID != "" {
+		parsedConnectionID, err := strconv.Atoi(connectionID)
+		if err != nil || parsedConnectionID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid connection ID"})
+			return
+		}
+
 		query += ` AND connection_id = $2`
-		args = append(args, connectionID)
+		args = append(args, parsedConnectionID)
 	}
 
 	query += ` ORDER BY start_time DESC LIMIT 50`

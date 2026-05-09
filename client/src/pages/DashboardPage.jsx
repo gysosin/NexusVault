@@ -15,13 +15,20 @@ export const DashboardPage = ({ setView }) => {
     const [pendingConnection, setPendingConnection] = useState(null);
     const [connectionPassword, setConnectionPassword] = useState('');
     const [restoreHistory, setRestoreHistory] = useState(false);
+    const [isLoadingConnections, setIsLoadingConnections] = useState(true);
+    const [connectionError, setConnectionError] = useState(null);
 
     const fetchConnections = useCallback(async () => {
+        setIsLoadingConnections(true);
+        setConnectionError(null);
         try {
             const data = await connectionApi.getConnections();
             setConnections(data);
         } catch (err) {
             console.error('Failed to fetch connections', err);
+            setConnectionError(err.message || 'Failed to load connections.');
+        } finally {
+            setIsLoadingConnections(false);
         }
     }, []);
 
@@ -33,8 +40,10 @@ export const DashboardPage = ({ setView }) => {
         try {
             const data = await connectionApi.createConnection(newConnection);
             setConnections((prev) => [...prev, data]);
+            setConnectionError(null);
         } catch (err) {
             console.error('Failed to add connection', err);
+            setConnectionError(err.message || 'Failed to add connection.');
         }
     };
 
@@ -42,8 +51,10 @@ export const DashboardPage = ({ setView }) => {
         try {
             await connectionApi.deleteConnection(id);
             setConnections((prev) => prev.filter((conn) => conn.id !== id));
+            setConnectionError(null);
         } catch (err) {
             console.error('Failed to delete connection', err);
+            setConnectionError(err.message || 'Failed to delete connection.');
         }
     };
 
@@ -75,6 +86,8 @@ export const DashboardPage = ({ setView }) => {
                 onConnect={initiateConnection}
                 onDelete={handleDeleteConnection}
                 sessions={sessions}
+                isLoading={isLoadingConnections}
+                error={connectionError}
                 activeSession={null}
             />
 

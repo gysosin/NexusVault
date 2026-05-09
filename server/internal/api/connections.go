@@ -1,32 +1,16 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
+	"go-server/internal/connection"
 	"go-server/internal/db"
 	"go-server/internal/models"
 	"go-server/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
-
-const (
-	connectionTypeSSH = "ssh"
-	connectionTypeRDP = "rdp"
-	minPort           = 1
-	maxPort           = 65535
-)
-
-type normalizedConnectionFields struct {
-	Name     string
-	Host     string
-	Port     int
-	Username string
-	Type     string
-}
 
 type CreateConnectionRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -73,7 +57,7 @@ func CreateConnection(c *gin.Context) {
 		return
 	}
 
-	fields, err := normalizeConnectionFields(req.Name, req.Host, req.Port, req.Username, req.Type)
+	fields, err := connection.NormalizeSaved(req.Name, req.Host, req.Port, req.Username, req.Type)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -154,7 +138,7 @@ func UpdateConnection(c *gin.Context) {
 		connType = existing.Type
 	}
 
-	fields, err := normalizeConnectionFields(name, host, port, username, connType)
+	fields, err := connection.NormalizeSaved(name, host, port, username, connType)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -204,46 +188,4 @@ func DeleteConnection(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-func normalizeConnectionFields(name, host string, port int, username, connType string) (normalizedConnectionFields, error) {
-	fields := normalizedConnectionFields{
-		Name:     strings.TrimSpace(name),
-		Host:     strings.TrimSpace(host),
-		Port:     port,
-		Username: strings.TrimSpace(username),
-		Type:     strings.ToLower(strings.TrimSpace(connType)),
-	}
-
-	if fields.Name == "" {
-		return normalizedConnectionFields{}, errors.New("name is required")
-	}
-	if fields.Host == "" {
-		return normalizedConnectionFields{}, errors.New("host is required")
-	}
-	if fields.Username == "" {
-		return normalizedConnectionFields{}, errors.New("username is required")
-	}
-
-	switch fields.Type {
-	case "":
-		fields.Type = connectionTypeSSH
-	case connectionTypeSSH, connectionTypeRDP:
-	default:
-		return normalizedConnectionFields{}, errors.New("type must be ssh or rdp")
-	}
-
-	if fields.Port == 0 {
-		if fields.Type == connectionTypeRDP {
-			fields.Port = 3389
-		} else {
-			fields.Port = 22
-		}
-	}
-
-	if fields.Port < minPort || fields.Port > maxPort {
-		return normalizedConnectionFields{}, errors.New("port must be between 1 and 65535")
-	}
-
-	return fields, nil
 }

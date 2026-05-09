@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"go-server/internal/connection"
 	"go-server/internal/db"
 	"go-server/internal/middleware"
 	"go-server/internal/models"
@@ -168,22 +169,10 @@ func HandleWebSocket(c *gin.Context) {
 				continue
 			}
 
-			// Resolve protocol
-			protocol := msg.Protocol
-			if protocol == "" {
-				if msg.Port == 3389 {
-					protocol = "rdp"
-				} else {
-					protocol = "ssh"
-				}
-			}
-
-			if msg.Port == 0 {
-				if protocol == "rdp" {
-					msg.Port = 3389
-				} else {
-					msg.Port = 22
-				}
+			fields, err := connection.NormalizeSession(msg.Host, msg.Port, msg.Username, msg.Protocol)
+			if err != nil {
+				sendError(err.Error())
+				continue
 			}
 
 			// Create Session
@@ -192,9 +181,9 @@ func HandleWebSocket(c *gin.Context) {
 				ID:             sessionID,
 				UserID:         claims.UserID,
 				ConnectionID:   &msg.ConnectionID,
-				Host:           msg.Host,
-				Port:           msg.Port,
-				Username:       msg.Username,
+				Host:           fields.Host,
+				Port:           fields.Port,
+				Username:       fields.Username,
 				Password:       msg.Password,
 				Type:           service.SessionTypeSSH, // default, override below
 				CreatedAt:      time.Now(),
@@ -204,7 +193,7 @@ func HandleWebSocket(c *gin.Context) {
 			}
 
 			// Set type based on protocol hint
-			if protocol == "rdp" {
+			if fields.Type == connection.TypeRDP {
 				session.Type = service.SessionTypeRDP
 				session.Width = msg.Width
 				session.Height = msg.Height

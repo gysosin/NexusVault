@@ -139,18 +139,15 @@ func HandleWebSocket(c *gin.Context) {
 				msg.Host = conn.Host
 				msg.Username = conn.Username
 				msg.Port = conn.Port
-				utils.Log("Connection lookup successful", "ID:", msg.ConnectionID, "HasPassword:", conn.HasPassword, "Password len:", len(conn.Password))
+				utils.Log("Connection lookup successful", "ID:", msg.ConnectionID)
 				if conn.Password != "" {
 					decryptedPass, err := utils.DecryptCredential(conn.Password)
 					if err != nil {
-						utils.Log("Password decryption failed:", err)
+						utils.Log("Saved credential decryption failed for connection", "ID:", msg.ConnectionID, "error:", err)
 						sendError("Failed to decrypt saved password.")
 						continue
 					}
 					msg.Password = decryptedPass
-					utils.Log("Password decrypted successfully, length:", len(decryptedPass))
-				} else {
-					utils.Log("No password stored for this connection")
 				}
 				if msg.Protocol == "" && conn.Type != "" {
 					msg.Protocol = conn.Type

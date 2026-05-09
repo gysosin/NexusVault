@@ -5,66 +5,86 @@
 </p>
 
 <p align="center">
-  <b>Secure, Modern Web-based SSH Client</b>
+  <b>Secure, Modern Web-based SSH/RDP Client</b>
 </p>
 
-NexusVault is a powerful web-based SSH client that bridges the gap between your browser and your infrastructure. It pairs a robust Node.js/Express backend with a sleek, modern React UI to deliver a full-featured terminal experience directly in your web browser.
+NexusVault is a web-based SSH/RDP client that bridges the browser to managed infrastructure. A Go/Gin backend serves authenticated APIs and WebSocket terminal streams, while a React/Vite frontend provides the terminal, RDP canvas, session management, and admin experience.
 
 ## 🚀 Features
 
 - **Web-based SSH Terminal**: Full xterm.js integration for a native terminal feel.
+- **Browser RDP Sessions**: RDP bitmap streaming over authenticated WebSockets.
 - **Real-time Streaming**: WebSocket-based communication for low-latency interaction.
-- **Secure Authentication**: SSH credentials are handled securely in memory.
+- **Secure Authentication**: JWT-backed API access with Redis session validation.
 - **Modern UI**: Built with React, Vite, and Tailwind CSS (Shadcn UI) for a premium user experience.
 - **Session Management**: Track and manage active SSH sessions.
-- **Docker Ready**: easy deployment with Docker and Docker Compose.
+- **Docker Ready**: Development and production Docker Compose files for PostgreSQL and Redis.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, Vite, Tailwind CSS, Shadcn UI, xterm.js, Framer Motion
-- **Backend**: Node.js, Express, ssh2, ws (WebSocket)
-- **Database**: PostgreSQL (for user data), Redis (for sessions/caching)
+- **Frontend**: React 18, Vite, Tailwind CSS, Shadcn UI, xterm.js, Framer Motion
+- **Backend**: Go 1.24, Gin, gorilla/websocket, sqlx, go-redis
+- **Remote Access**: `golang.org/x/crypto/ssh` and vendored `grdp`
+- **Database/Cache**: PostgreSQL 16 and Redis 7
 
 ## 📋 Prerequisites
 
-- Node.js 18+
-- npm (for both root and `client/` workspace)
-- Docker (optional, for containerized deployment)
+- Go 1.24+
+- Node.js 18+ and npm for the frontend
+- Docker and Docker Compose for local PostgreSQL/Redis
 
 ## 📦 Installation
 
-1.  **Install Backend Dependencies**
-    ```bash
-    npm install
-    ```
-
-2.  **Install Frontend Dependencies**
+1.  **Install Frontend Dependencies**
     ```bash
     cd client
     npm install
     ```
 
+2.  **Create Environment File**
+    ```bash
+    cp .env.example .env
+    ```
+
+3.  **Set Required Secrets**
+    - `JWT_SECRET`: long random string for API tokens.
+    - `API_SECRET`: long random string for payload and saved-credential encryption.
+    - `DATABASE_URL`: PostgreSQL connection string.
+    - `REDIS_URL`: Redis connection string.
+    - `ALLOWED_ORIGINS`: comma-separated browser origins allowed for CORS/WebSockets.
+
 ## 💻 Development Workflow
 
-Run the development server (starts both backend and frontend):
+Run the full development stack:
 
 ```bash
-npm run dev
+bash dev.sh
 ```
 
 - **Frontend**: `http://localhost:5173`
-- **Backend**: `http://localhost:3000` (WebSockets at `ws://localhost:3000`)
+- **Backend API**: `http://localhost:3000/api`
+- **WebSockets**: `ws://localhost:3000/ws` and `ws://localhost:3000/ws/notifications`
+
+Or run components separately:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+cd server && go run ./cmd/server
+cd client && npm run dev
+```
 
 ## 🏗️ Production Build
 
 To build the application for production:
 
 ```bash
-npm run build:client   # Bundle React UI
-npm start              # Start Express server
+cd client && npm run build
+cd ../server && go build ./cmd/server
 ```
 
 Access the application at `http://localhost:3000`.
+
+Production mode fails fast if `JWT_SECRET`, `API_SECRET`, `DATABASE_URL`, or `REDIS_URL` are missing or unsafe.
 
 ## 🐳 Docker Deployment
 
@@ -88,9 +108,10 @@ docker compose up --build
 
 - **In-Memory Credentials**: SSH passwords/keys are held in memory only for the duration of the session.
 - **Encrypted Transport**: Always run behind HTTPS/WSS in production.
-- **Access Control**: Ensure the backend is only accessible to trusted networks.
+- **Access Control**: API and WebSocket traffic requires a valid JWT-backed Redis session.
+- **Origin Controls**: Configure `ALLOWED_ORIGINS` to match deployed browser origins.
+- **Secret Hygiene**: Never commit real `.env` files, API keys, JWT secrets, or encryption secrets.
 
 ## 📄 License
 
 ISC
-

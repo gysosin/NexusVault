@@ -53,3 +53,15 @@ func TestNormalizeRegisterRequestRejectsBlankUsername(t *testing.T) {
 		t.Fatal("normalizeRegisterRequest() error = nil, want blank username error")
 	}
 }
+
+func TestValidateAccountPasswordRejectsShortPassword(t *testing.T) {
+	if err := validateAccountPassword("short"); err == nil {
+		t.Fatal("validateAccountPassword() error = nil, want short password error")
+	}
+}
+
+func TestValidateAccountPasswordAcceptsEightCharacters(t *testing.T) {
+	if err := validateAccountPassword("12345678"); err != nil {
+		t.Fatalf("validateAccountPassword() error = %v, want nil", err)
+	}
+}

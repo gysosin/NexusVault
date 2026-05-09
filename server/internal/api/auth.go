@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"go-server/internal/config"
 	"go-server/internal/db"
@@ -31,6 +32,8 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+const minAccountPasswordLength = 8
+
 func Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -38,6 +41,10 @@ func Register(c *gin.Context) {
 		return
 	}
 	if err := normalizeRegisterRequest(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateAccountPassword(req.Password); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -143,6 +150,14 @@ func normalizeRegisterRequest(req *RegisterRequest) error {
 	}
 	if req.Email == "" {
 		return errors.New("email is required")
+	}
+
+	return nil
+}
+
+func validateAccountPassword(password string) error {
+	if utf8.RuneCountInString(password) < minAccountPasswordLength {
+		return fmt.Errorf("password must be at least %d characters", minAccountPasswordLength)
 	}
 
 	return nil

@@ -33,6 +33,7 @@ type LoginRequest struct {
 }
 
 const minAccountPasswordLength = 8
+const loginSessionStoreTimeout = 2 * time.Second
 
 func Register(c *gin.Context) {
 	var req RegisterRequest
@@ -177,6 +178,9 @@ func persistLoginSession(ctx context.Context, token string, userID int, ttl time
 	if db.Redis == nil {
 		return errors.New("session store unavailable")
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, loginSessionStoreTimeout)
+	defer cancel()
 
 	sessionKey := fmt.Sprintf("session:%s", token)
 	return db.Redis.Set(ctx, sessionKey, userID, ttl).Err()

@@ -129,6 +129,12 @@ docker compose config --quiet
 
 The bundled PostgreSQL container loads `server/schema.sql` only when its data volume is initialized for the first time. Existing volumes keep their current schema; apply future schema changes with a migration or recreate the volume only when data loss is acceptable.
 
+## 📈 Operations
+
+- `GET /api/health`: returns dependency status with HTTP 200 for dashboards and the in-app System Status page.
+- `GET /api/ready`: returns HTTP 200 only when PostgreSQL and Redis are reachable; returns HTTP 503 when the app should be removed from traffic.
+- Production Docker Compose uses `/api/ready` for the web container healthcheck.
+
 ## 🔐 Security
 
 - **In-Memory Credentials**: SSH passwords/keys are held in memory only for the duration of the session.

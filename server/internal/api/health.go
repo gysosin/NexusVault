@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"go-server/internal/db"
 
@@ -15,6 +16,8 @@ type HealthStatus struct {
 	Redis    string `json:"redis"`
 }
 
+const healthDependencyTimeout = 2 * time.Second
+
 func GetHealthStatus(c *gin.Context) {
 	status := HealthStatus{
 		Status:   "operational",
@@ -22,14 +25,15 @@ func GetHealthStatus(c *gin.Context) {
 		Redis:    "operational",
 	}
 
-	// Check Database
-	if err := db.DB.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), healthDependencyTimeout)
+	defer cancel()
+
+	if db.DB == nil || db.DB.PingContext(ctx) != nil {
 		status.Database = "down"
 		status.Status = "degraded"
 	}
 
-	// Check Redis
-	if err := db.Redis.Ping(context.Background()).Err(); err != nil {
+	if db.Redis == nil || db.Redis.Ping(ctx).Err() != nil {
 		status.Redis = "down"
 		status.Status = "degraded"
 	}

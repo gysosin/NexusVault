@@ -13,6 +13,7 @@ import (
 	"go-server/internal/config"
 	"go-server/internal/db"
 	"go-server/internal/models"
+	"go-server/internal/security"
 	"go-server/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -172,14 +173,7 @@ func validateAccountPassword(password string) error {
 }
 
 func Logout(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") && db.Redis != nil {
-		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-		if token == "" {
-			c.Status(http.StatusNoContent)
-			return
-		}
-
+	if token := security.BearerToken(c.GetHeader("Authorization")); token != "" && db.Redis != nil {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), loginSessionStoreTimeout)
 		defer cancel()
 

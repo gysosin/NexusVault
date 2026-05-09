@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-server/internal/db"
+	"go-server/internal/security"
 	"go-server/internal/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 const sessionStoreTimeout = 2 * time.Second
@@ -66,7 +68,7 @@ func DecryptPayloadMiddleware() gin.HandlerFunc {
 
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims, err := AuthenticateToken(bearerToken(c.GetHeader("Authorization")))
+		claims, err := AuthenticateToken(security.BearerToken(c.GetHeader("Authorization")))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
@@ -83,7 +85,7 @@ func TokenFromRequest(r *http.Request) string {
 		return ""
 	}
 
-	if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+	if token := security.BearerToken(r.Header.Get("Authorization")); token != "" {
 		return token
 	}
 
@@ -118,12 +120,4 @@ func AuthenticateToken(tokenString string) (*utils.Claims, error) {
 	}
 
 	return claims, nil
-}
-
-func bearerToken(authHeader string) string {
-	parts := strings.Fields(authHeader)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-		return ""
-	}
-	return parts[1]
 }

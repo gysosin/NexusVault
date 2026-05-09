@@ -6,7 +6,8 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { Toaster } from './components/ui/toaster';
-import { DEFAULT_USER_SETTINGS, loadUserSettings } from './lib/userSettings';
+import { loadUserSettings, persistUserSettings } from './lib/userSettings';
+import { loadCurrentView, persistCurrentView } from './lib/viewStorage';
 
 const SessionsDashboard = lazy(() => import('./components/session/SessionsDashboard').then((module) => ({ default: module.SessionsDashboard })));
 const Settings = lazy(() => import('./components/settings/Settings').then((module) => ({ default: module.Settings })));
@@ -23,30 +24,17 @@ const ViewFallback = () => (
 const AppContent = () => {
   const { user, loading } = useAuth();
   const { sessions, setActiveSessionId } = useSession();
-  const [view, setView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('current_view');
-      return saved === 'terminal' ? 'terminal' : 'dashboard';
-    }
-    return 'dashboard';
-  });
+  const [view, setView] = useState(loadCurrentView);
 
-  const [userSettings, setUserSettings] = useState(() => {
-    if (typeof window === 'undefined') return { ...DEFAULT_USER_SETTINGS };
-    return loadUserSettings(window.localStorage);
-  });
+  const [userSettings, setUserSettings] = useState(loadUserSettings);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('current_view', view);
-    }
+    persistCurrentView(view);
   }, [view]);
 
   const handleSaveSettings = (newSettings) => {
     setUserSettings(newSettings);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('user_settings', JSON.stringify(newSettings));
-    }
+    persistUserSettings(newSettings);
   };
 
   if (loading) {

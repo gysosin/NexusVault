@@ -123,6 +123,8 @@ Validate the rendered Compose model before deployment:
 docker compose config --quiet
 ```
 
+The bundled PostgreSQL container loads `server/schema.sql` only when its data volume is initialized for the first time. Existing volumes keep their current schema; apply future schema changes with a migration or recreate the volume only when data loss is acceptable.
+
 ## 🔐 Security
 
 - **In-Memory Credentials**: SSH passwords/keys are held in memory only for the duration of the session.

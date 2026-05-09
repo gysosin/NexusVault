@@ -1,7 +1,9 @@
 package db
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -10,15 +12,16 @@ import (
 
 var DB *sqlx.DB
 
+const startupConnectionTimeout = 5 * time.Second
+
 func InitDb() {
 	var err error
-	DB, err = sqlx.Connect("postgres", config.Envs.DatabaseURL)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), startupConnectionTimeout)
+	defer cancel()
 
-	if err := DB.Ping(); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+	DB, err = sqlx.ConnectContext(ctx, "postgres", config.Envs.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database within %s: %v", startupConnectionTimeout, err)
 	}
 
 	log.Println("Connected to database")

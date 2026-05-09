@@ -18,8 +18,11 @@ func InitRedis() {
 
 	Redis = redis.NewClient(opts)
 
-	if err := Redis.Ping(context.Background()).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), startupConnectionTimeout)
+	defer cancel()
+
+	if err := Redis.Ping(ctx).Err(); err != nil {
+		log.Fatalf("Failed to connect to Redis within %s: %v", startupConnectionTimeout, err)
 	}
 
 	log.Println("Connected to Redis")

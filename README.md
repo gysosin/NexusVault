@@ -48,8 +48,9 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
 
 3.  **Set Required Secrets**
     - `JWT_SECRET`: long random string for API tokens.
-    - `API_SECRET`: long random string for payload and saved-credential encryption.
-    - `VITE_API_SECRET`: frontend build-time payload encryption value. It must match the backend payload secret, but because `VITE_` variables are bundled into browser JavaScript, it must not be treated as a private server-side secret.
+    - `API_SECRET`: long random string for browser payload encryption. It must match `VITE_API_SECRET`.
+    - `CREDENTIAL_SECRET`: long random server-only string for saved connection-password encryption. Keep it distinct from `API_SECRET`.
+    - `VITE_API_SECRET`: frontend build-time payload encryption value. It must match `API_SECRET`, but because `VITE_` variables are bundled into browser JavaScript, it must not be treated as a private server-side secret.
     - `DATABASE_URL`: PostgreSQL connection string.
     - `REDIS_URL`: Redis connection string.
     - `ALLOWED_ORIGINS`: comma-separated browser origins allowed for CORS/WebSockets.
@@ -117,7 +118,7 @@ Required production Compose variables:
 
 - `DATABASE_URL`: for the bundled database, use `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>?sslmode=disable`.
 - `REDIS_URL`: for the bundled cache, use `redis://redis:6379`.
-- `JWT_SECRET` and `API_SECRET`: unique random values of at least 32 characters.
+- `JWT_SECRET`, `API_SECRET`, and `CREDENTIAL_SECRET`: unique random values of at least 32 characters.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`: credentials used to initialize the bundled PostgreSQL container.
 
 Validate the rendered Compose model before deployment:
@@ -135,6 +136,7 @@ The bundled PostgreSQL container loads `server/schema.sql` only when its data vo
 - **Access Control**: API and WebSocket traffic requires a valid JWT-backed Redis session.
 - **Origin Controls**: Configure `ALLOWED_ORIGINS` to match deployed browser origins.
 - **Browser-Bundled Config**: `VITE_API_SECRET` is visible to users of the built frontend; use HTTPS/WSS for transport security and do not rely on browser-side payload encryption as a substitute.
+- **Credential Encryption**: `CREDENTIAL_SECRET` protects stored connection passwords. Rotating it requires re-encrypting or recreating saved credentials encrypted with the previous value.
 - **SSH Host Keys**: Production SSH sessions require `SSH_KNOWN_HOSTS_PATH` unless `ALLOW_INSECURE_SSH_HOST_KEYS=true` is explicitly set.
 - **Secret Hygiene**: Never commit real `.env` files, API keys, JWT secrets, or encryption secrets.
 

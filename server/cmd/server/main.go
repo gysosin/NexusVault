@@ -2,6 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	apiPkg "go-server/internal/api"
 	"go-server/internal/config"
 	"go-server/internal/db"
@@ -9,9 +17,6 @@ import (
 	"go-server/internal/service"
 	"go-server/internal/utils"
 	wsPkg "go-server/internal/websocket"
-	"log"
-	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,9 +24,10 @@ import (
 const startupMaintenanceTimeout = 5 * time.Second
 const readHeaderTimeout = 5 * time.Second
 const idleConnectionTimeout = 60 * time.Second
+const shutdownTimeout = 10 * time.Second
 
 func main() {
-	println("Starting server...")
+	utils.Log("Starting server...")
 	config.InitConfig()
 	db.InitDb()
 	db.InitRedis()
@@ -112,7 +118,9 @@ func main() {
 	port := config.Envs.Port
 	utils.Log("Server running on port " + port)
 	server := newHTTPServer(r, port)
-	if err := server.ListenAndServe(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := runHTTPServer(ctx, server, server.ListenAndServe); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
@@ -123,5 +131,36 @@ func newHTTPServer(handler http.Handler, port string) *http.Server {
 		Handler:           handler,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleConnectionTimeout,
+	}
+}
+
+func runHTTPServer(ctx context.Context, server *http.Server, serve func() error) error {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- serve()
+	}()
+
+	select {
+	case err := <-errCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+
+		select {
+		case err := <-errCh:
+			if errors.Is(err, http.ErrServerClosed) {
+				return nil
+			}
+			return err
+		case <-shutdownCtx.Done():
+			return shutdownCtx.Err()
+		}
 	}
 }

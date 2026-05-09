@@ -1,23 +1,34 @@
 package websocket
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go-server/internal/config"
 	"go-server/internal/service"
 	"go-server/internal/utils"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 func StartSSHSession(session *service.Session) {
+	hostKeyCallback, err := sshHostKeyCallback()
+	if err != nil {
+		utils.Log("SSH host key configuration error:", err)
+		session.Broadcast(gin.H{"type": "error", "message": err.Error()})
+		service.RemoveSession(session.ID)
+		return
+	}
+
 	config := &ssh.ClientConfig{
 		User: session.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(session.Password),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Note: In production, verify host keys
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         20 * time.Second,
 	}
 
@@ -66,13 +77,13 @@ func StartSSHSession(session *service.Session) {
 		utils.Log("SSH Stdin Error:", err)
 		return
 	}
-	
+
 	stdout, err := sess.StdoutPipe()
 	if err != nil {
 		utils.Log("SSH Stdout Error:", err)
 		return
 	}
-	
+
 	stderr, err := sess.StderrPipe()
 	if err != nil {
 		utils.Log("SSH Stderr Error:", err)
@@ -122,4 +133,16 @@ func StartSSHSession(session *service.Session) {
 			}
 		}
 	}()
+}
+
+func sshHostKeyCallback() (ssh.HostKeyCallback, error) {
+	if config.Envs.SSHKnownHostsPath != "" {
+		return knownhosts.New(config.Envs.SSHKnownHostsPath)
+	}
+
+	if config.Envs.AllowInsecureSSHHostKey {
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	return nil, errors.New("SSH_KNOWN_HOSTS_PATH is required unless ALLOW_INSECURE_SSH_HOST_KEYS=true")
 }

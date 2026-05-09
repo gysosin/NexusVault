@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"go-server/internal/config"
 	"go-server/internal/db"
 	"go-server/internal/models"
 	"go-server/internal/utils"
@@ -36,6 +37,18 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	var existingUserCount int
+	if err := db.DB.Get(&existingUserCount, "SELECT COUNT(*) FROM users"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to validate registration policy."})
+		return
+	}
+
+	decision := registrationDecision(config.Envs.AllowPublicRegistration, existingUserCount)
+	if !decision.Allowed {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Public registration is disabled."})
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
@@ -43,8 +56,8 @@ func Register(c *gin.Context) {
 	}
 
 	var user models.User
-	query := `INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, role`
-	err = db.DB.QueryRowx(query, req.Username, req.Email, string(hashedPassword)).StructScan(&user)
+	query := `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role`
+	err = db.DB.QueryRowx(query, req.Username, req.Email, string(hashedPassword), decision.Role).StructScan(&user)
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {

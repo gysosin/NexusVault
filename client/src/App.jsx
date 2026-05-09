@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { Toaster } from './components/ui/toaster';
+import { DEFAULT_USER_SETTINGS, loadUserSettings } from './lib/userSettings';
 
 const SessionsDashboard = lazy(() => import('./components/session/SessionsDashboard').then((module) => ({ default: module.SessionsDashboard })));
 const Settings = lazy(() => import('./components/settings/Settings').then((module) => ({ default: module.Settings })));
@@ -30,13 +31,9 @@ const AppContent = () => {
     return 'dashboard';
   });
 
-  // User Settings (moved from original App.jsx, could be in a context but keeping simple for now)
   const [userSettings, setUserSettings] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('user_settings');
-      return saved ? JSON.parse(saved) : { sessionPreviewMode: 'hover' };
-    }
-    return { sessionPreviewMode: 'hover' };
+    if (typeof window === 'undefined') return { ...DEFAULT_USER_SETTINGS };
+    return loadUserSettings(window.localStorage);
   });
 
   useEffect(() => {

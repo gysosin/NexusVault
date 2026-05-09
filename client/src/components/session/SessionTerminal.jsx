@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Terminal as XTerm } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import { Terminal as XTerm } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
 import { encryptPayload } from '../../api/encryption';
 import { withWebSocketToken } from '../../api/websocket';
 import { ScrollText, Power, X, History } from 'lucide-react';

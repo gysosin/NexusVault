@@ -9,12 +9,15 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"go-server/internal/db"
 	"go-server/internal/utils"
 )
+
+const sessionStoreTimeout = 2 * time.Second
 
 func DecryptPayload() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -125,8 +128,11 @@ func AuthenticateToken(tokenString string) (*utils.Claims, error) {
 		return nil, errors.New("session store unavailable")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), sessionStoreTimeout)
+	defer cancel()
+
 	sessionKey := fmt.Sprintf("session:%s", tokenString)
-	if _, err := db.Redis.Get(context.Background(), sessionKey).Result(); err != nil {
+	if _, err := db.Redis.Get(ctx, sessionKey).Result(); err != nil {
 		return nil, err
 	}
 

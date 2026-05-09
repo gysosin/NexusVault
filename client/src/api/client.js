@@ -1,3 +1,5 @@
+import { readAuthToken } from '@/lib/authTokenStorage';
+
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 const configuredTimeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000);
 const DEFAULT_REQUEST_TIMEOUT_MS = Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
@@ -13,7 +15,7 @@ export const requestJson = async (endpoint, { method = 'GET', body, headers = {}
     signal: controller.signal,
   };
 
-  const token = window.localStorage.getItem('auth_token');
+  const token = readAuthToken();
   if (token) {
     fetchOptions.headers['Authorization'] = `Bearer ${token}`;
   }

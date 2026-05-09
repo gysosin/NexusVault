@@ -1,23 +1,28 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authApi from '../api/auth';
+import { persistAuthToken, readAuthToken } from '../lib/authTokenStorage';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [token, setToken] = useState(() => {
-        if (typeof window !== 'undefined') return window.localStorage.getItem('auth_token');
-        return null;
-    });
+    const [token, setToken] = useState(readAuthToken);
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const persistToken = useCallback((newToken) => {
-        setToken(newToken);
-        if (typeof window !== 'undefined') {
-            if (newToken) window.localStorage.setItem('auth_token', newToken);
-            else window.localStorage.removeItem('auth_token');
+        if (newToken) {
+            persistAuthToken(newToken);
+            setToken(newToken);
+            return;
         }
+
+        try {
+            persistAuthToken(null);
+        } catch {
+            // Local state still needs to clear when browser storage is unavailable.
+        }
+        setToken(null);
     }, []);
 
     const refreshUser = useCallback(async () => {

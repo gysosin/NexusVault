@@ -139,6 +139,12 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(c.CredentialSecret) == strings.TrimSpace(c.APISecret) {
 		errs = append(errs, errors.New("CREDENTIAL_SECRET must be distinct from API_SECRET in production"))
 	}
+	if c.AuthRateLimitRequests <= 0 {
+		errs = append(errs, errors.New("AUTH_RATE_LIMIT_REQUESTS must be greater than zero in production"))
+	}
+	if c.AuthRateLimitWindow <= 0 {
+		errs = append(errs, errors.New("AUTH_RATE_LIMIT_WINDOW must be greater than zero in production"))
+	}
 
 	return errors.Join(errs...)
 }

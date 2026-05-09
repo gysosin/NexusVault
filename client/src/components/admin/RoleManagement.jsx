@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { requestJson } from '@/api/client';
 
 const PERMISSIONS = [
     { id: 'manage_users', label: 'Manage Users' },
@@ -29,14 +30,8 @@ export function RoleManagement() {
 
     const fetchRoles = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/roles', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setRoles(data);
-            }
+            const data = await requestJson('/api/admin/roles');
+            setRoles(data);
         } catch (err) {
             console.error('Failed to fetch roles', err);
         } finally {
@@ -46,21 +41,14 @@ export function RoleManagement() {
 
     const handleAddRole = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
             const id = newRole.name.toLowerCase().replace(/\s+/g, '_');
-            const res = await fetch('/api/admin/roles', {
+            await requestJson('/api/admin/roles', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ ...newRole, id })
+                body: { ...newRole, id }
             });
-            if (res.ok) {
-                fetchRoles();
-                setIsAddRoleOpen(false);
-                setNewRole({ name: '', description: '', permissions: [] });
-            }
+            fetchRoles();
+            setIsAddRoleOpen(false);
+            setNewRole({ name: '', description: '', permissions: [] });
         } catch (err) {
             console.error('Failed to create role', err);
         }
@@ -69,14 +57,10 @@ export function RoleManagement() {
     const handleDeleteRole = async (id) => {
         if (!confirm('Are you sure you want to delete this role?')) return;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/admin/roles/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            await requestJson(`/api/admin/roles/${id}`, {
+                method: 'DELETE'
             });
-            if (res.ok) {
-                fetchRoles();
-            }
+            fetchRoles();
         } catch (err) {
             console.error('Failed to delete role', err);
         }

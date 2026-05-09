@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark, Download, Copy, Check } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark, Download, Copy, Check, CheckCircle2, Circle } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -18,6 +18,7 @@ import {
 } from '@/lib/dashboardViews';
 import { downloadConnectionsCsv } from '@/lib/connectionExport';
 import { copyConnectionAddress } from '@/lib/connectionAddress';
+import { buildDashboardOnboardingSteps, isDashboardOnboardingComplete } from '@/lib/dashboardOnboarding';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -126,6 +127,11 @@ export function Dashboard({
         () => getDashboardViewCards(connections),
         [connections]
     );
+    const onboardingSteps = useMemo(
+        () => buildDashboardOnboardingSteps({ connections, sessions, connectionHealth }),
+        [connections, sessions, connectionHealth]
+    );
+    const showOnboardingChecklist = !isDashboardOnboardingComplete(onboardingSteps);
 
     const selectedDashboardView = useMemo(
         () => getDashboardView(selectedDashboardViewId),
@@ -215,6 +221,14 @@ export function Dashboard({
                 isLoading={isLoading}
                 onSelect={handleDashboardViewSelect}
             />
+
+            {showOnboardingChecklist && (
+                <DashboardOnboardingChecklist
+                    steps={onboardingSteps}
+                    isLoading={isLoading}
+                    onAdd={() => setIsAddOpen(true)}
+                />
+            )}
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
 
@@ -397,6 +411,67 @@ function SavedDashboardViews({ views, selectedViewId, isLoading, onSelect }) {
                         })
                     )}
                 </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function DashboardOnboardingChecklist({ steps, isLoading, onAdd }) {
+    const completedCount = steps.filter((step) => step.complete).length;
+
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                        <CheckCircle2 className="h-4 w-4 text-green-300" />
+                        Getting started
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-sm text-gray-400">
+                        {completedCount} of {steps.length} setup steps complete
+                    </CardDescription>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-fit border-white/10 bg-white/[0.04] text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+                    onClick={onAdd}
+                >
+                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    Add target
+                </Button>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="grid gap-3 md:grid-cols-3">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="h-20 animate-pulse rounded-md border border-white/10 bg-white/[0.03]" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid gap-3 md:grid-cols-3">
+                        {steps.map((step) => {
+                            const StepIcon = step.complete ? CheckCircle2 : Circle;
+                            return (
+                                <div
+                                    key={step.id}
+                                    className={`rounded-md border px-4 py-3 ${step.complete
+                                        ? 'border-green-500/20 bg-green-500/[0.06]'
+                                        : 'border-white/10 bg-white/[0.03]'
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <StepIcon className={`mt-0.5 h-4 w-4 shrink-0 ${step.complete ? 'text-green-300' : 'text-gray-500'}`} />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-white">{step.label}</p>
+                                            <p className="mt-1 text-xs leading-5 text-gray-500">{step.description}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -113,12 +114,10 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Store in Redis
-	sessionKey := fmt.Sprintf("session:%s", token)
-	err = db.Redis.Set(context.Background(), sessionKey, user.ID, 24*time.Hour).Err()
-	if err != nil {
+	if err := persistLoginSession(c.Request.Context(), token, user.ID, 24*time.Hour); err != nil {
 		utils.Log("Failed to store session in Redis", err)
-		// Continue anyway? Or fail? Node.js logs it.
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Session store unavailable."})
+		return
 	}
 
 	// Log activity
@@ -139,6 +138,15 @@ func Logout(c *gin.Context) {
 		db.Redis.Del(context.Background(), sessionKey)
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func persistLoginSession(ctx context.Context, token string, userID int, ttl time.Duration) error {
+	if db.Redis == nil {
+		return errors.New("session store unavailable")
+	}
+
+	sessionKey := fmt.Sprintf("session:%s", token)
+	return db.Redis.Set(ctx, sessionKey, userID, ttl).Err()
 }
 
 func Me(c *gin.Context) {

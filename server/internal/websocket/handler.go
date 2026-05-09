@@ -47,7 +47,8 @@ type WSMessage struct {
 
 // HandleWebSocket manages the WebSocket connection
 func HandleWebSocket(c *gin.Context) {
-	if _, err := middleware.AuthenticateToken(middleware.TokenFromRequest(c.Request)); err != nil {
+	claims, err := middleware.AuthenticateToken(middleware.TokenFromRequest(c.Request))
+	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
@@ -125,13 +126,6 @@ func HandleWebSocket(c *gin.Context) {
 				if msg.Protocol == "" && payloadData.Type != "" {
 					msg.Protocol = payloadData.Type
 				}
-			}
-
-			// Verify Auth
-			claims, err := utils.VerifyToken(msg.Token)
-			if err != nil {
-				sendError(err.Error())
-				continue
 			}
 
 			// If connectionID provided, fetch details
@@ -238,12 +232,6 @@ func HandleWebSocket(c *gin.Context) {
 			targetID := msg.SessionID
 			if targetID == "" {
 				targetID = msg.ID
-			}
-
-			claims, err := utils.VerifyToken(msg.Token)
-			if err != nil {
-				sendError(err.Error())
-				continue
 			}
 
 			session := service.GetSession(targetID)

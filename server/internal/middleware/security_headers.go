@@ -1,0 +1,16 @@
+package middleware
+
+import "github.com/gin-gonic/gin"
+
+func SecurityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		headers := c.Writer.Header()
+		headers.Set("X-Content-Type-Options", "nosniff")
+		headers.Set("X-Frame-Options", "SAMEORIGIN")
+		headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		headers.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		headers.Set("Content-Security-Policy", "frame-ancestors 'self'")
+
+		c.Next()
+	}
+}

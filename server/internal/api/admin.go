@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"go-server/internal/db"
 	"go-server/internal/models"
@@ -16,6 +19,16 @@ import (
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var roleIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,49}$`)
+
+var allowedRolePermissions = map[string]struct{}{
+	"manage_users":       {},
+	"manage_roles":       {},
+	"manage_connections": {},
+	"share_connections":  {},
+	"view_audit":         {},
+}
 
 func ensureAdmin(c *gin.Context) bool {
 	roleValue, exists := c.Get("role")
@@ -319,6 +332,10 @@ func CreateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := normalizeCreateRoleRequest(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	perms := req.Permissions
 	if perms == nil {
@@ -355,6 +372,10 @@ func DeleteRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Role ID required"})
 		return
 	}
+	if isSystemRole(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "System roles cannot be deleted"})
+		return
+	}
 
 	result, err := db.DB.Exec("DELETE FROM roles WHERE id = $1", id)
 	if err != nil {
@@ -374,6 +395,36 @@ func DeleteRole(c *gin.Context) {
 // PromoteUser (Example admin action)
 func PromoteUser(c *gin.Context) {
 	c.Status(http.StatusNotImplemented)
+}
+
+func normalizeCreateRoleRequest(req *createRoleRequest) error {
+	req.ID = strings.ToLower(strings.TrimSpace(req.ID))
+	req.Name = strings.TrimSpace(req.Name)
+	req.Description = strings.TrimSpace(req.Description)
+
+	if !roleIDPattern.MatchString(req.ID) {
+		return fmt.Errorf("role id must start with a letter and contain only lowercase letters, numbers, or underscores")
+	}
+	if req.Name == "" {
+		return fmt.Errorf("role name is required")
+	}
+
+	for _, permission := range req.Permissions {
+		if _, ok := allowedRolePermissions[permission]; !ok {
+			return fmt.Errorf("unsupported permission %q", permission)
+		}
+	}
+
+	return nil
+}
+
+func isSystemRole(id string) bool {
+	switch id {
+	case "admin", "user", "viewer":
+		return true
+	default:
+		return false
+	}
 }
 
 func LogoutUser(c *gin.Context) {

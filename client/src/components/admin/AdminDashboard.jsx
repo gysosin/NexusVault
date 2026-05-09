@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Server, Activity, HardDrive } from 'lucide-react';
+import { requestJson } from '@/api/client';
 
 export function AdminDashboard() {
     const [stats, setStats] = useState({ users: 0, connections: 0, activeSessions: 0 });
@@ -14,14 +15,8 @@ export function AdminDashboard() {
 
     const fetchStats = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/admin/stats', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setStats(data);
-            }
+            const data = await requestJson('/api/admin/stats');
+            setStats(data);
         } catch (err) {
             console.error('Failed to fetch stats', err);
         } finally {

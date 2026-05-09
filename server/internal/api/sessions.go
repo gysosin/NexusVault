@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go-server/internal/db"
@@ -10,22 +12,24 @@ import (
 	"go-server/internal/service"
 )
 
+const sessionDatabaseTimeout = 3 * time.Second
+
 func GetActiveSessions(c *gin.Context) {
 	userID, _ := c.Get("userId")
 	userIDInt := userID.(int)
 
 	sessions := service.GetSessionsForUser(userIDInt)
-	
+
 	type ActiveSessionResponse struct {
-		ID           string      `json:"id"`
-		Host         string      `json:"host"`
-		Username     string      `json:"username"`
-		Port         int         `json:"port"`
-		ConnectionID *int        `json:"connectionId"`
-		Protocol     string      `json:"protocol"`
-		Attached     bool        `json:"attached"`
-		CreatedAt    string      `json:"createdAt"` // ISO string
-		LastActivity string      `json:"lastActivity"` // ISO string
+		ID           string `json:"id"`
+		Host         string `json:"host"`
+		Username     string `json:"username"`
+		Port         int    `json:"port"`
+		ConnectionID *int   `json:"connectionId"`
+		Protocol     string `json:"protocol"`
+		Attached     bool   `json:"attached"`
+		CreatedAt    string `json:"createdAt"`    // ISO string
+		LastActivity string `json:"lastActivity"` // ISO string
 	}
 
 	var response []ActiveSessionResponse
@@ -61,6 +65,8 @@ func GetActiveSessions(c *gin.Context) {
 func GetSessionHistory(c *gin.Context) {
 	userID, _ := c.Get("userId")
 	connectionID := c.Query("connectionId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), sessionDatabaseTimeout)
+	defer cancel()
 
 	var history []models.SessionHistory
 	query := `SELECT id, session_id, host, username, start_time, end_time, status FROM session_histories WHERE user_id = $1`
@@ -73,7 +79,7 @@ func GetSessionHistory(c *gin.Context) {
 
 	query += ` ORDER BY start_time DESC LIMIT 50`
 
-	err := db.DB.Select(&history, query, args...)
+	err := db.DB.SelectContext(ctx, &history, query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch session history"})
 		return
@@ -89,10 +95,12 @@ func GetSessionHistory(c *gin.Context) {
 func GetSessionDetails(c *gin.Context) {
 	userID, _ := c.Get("userId")
 	sessionID := c.Param("sessionId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), sessionDatabaseTimeout)
+	defer cancel()
 
 	var history models.SessionHistory
 	query := `SELECT * FROM session_histories WHERE session_id = $1 AND user_id = $2`
-	err := db.DB.Get(&history, query, sessionID, userID)
+	err := db.DB.GetContext(ctx, &history, query, sessionID, userID)
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Session history not found"})

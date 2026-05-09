@@ -49,6 +49,7 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
 3.  **Set Required Secrets**
     - `JWT_SECRET`: long random string for API tokens.
     - `API_SECRET`: long random string for payload and saved-credential encryption.
+    - `VITE_API_SECRET`: frontend build-time payload encryption value. It must match the backend payload secret, but because `VITE_` variables are bundled into browser JavaScript, it must not be treated as a private server-side secret.
     - `DATABASE_URL`: PostgreSQL connection string.
     - `REDIS_URL`: Redis connection string.
     - `ALLOWED_ORIGINS`: comma-separated browser origins allowed for CORS/WebSockets.
@@ -133,6 +134,7 @@ The bundled PostgreSQL container loads `server/schema.sql` only when its data vo
 - **Encrypted Transport**: Always run behind HTTPS/WSS in production.
 - **Access Control**: API and WebSocket traffic requires a valid JWT-backed Redis session.
 - **Origin Controls**: Configure `ALLOWED_ORIGINS` to match deployed browser origins.
+- **Browser-Bundled Config**: `VITE_API_SECRET` is visible to users of the built frontend; use HTTPS/WSS for transport security and do not rely on browser-side payload encryption as a substitute.
 - **SSH Host Keys**: Production SSH sessions require `SSH_KNOWN_HOSTS_PATH` unless `ALLOW_INSECURE_SSH_HOST_KEYS=true` is explicitly set.
 - **Secret Hygiene**: Never commit real `.env` files, API keys, JWT secrets, or encryption secrets.
 

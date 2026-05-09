@@ -19,7 +19,12 @@ func Logf(format string, v ...interface{}) {
 func LogActivity(userID *int, action, target, status string, details interface{}) {
 	// Fire and forget
 	go func() {
-		detailsJSON, _ := json.Marshal(details)
+		if db.DB == nil {
+			log.Println("Failed to log activity: database unavailable")
+			return
+		}
+
+		detailsJSON := activityDetailsJSON(details)
 		_, err := db.DB.Exec(`
 			INSERT INTO activity_logs (user_id, action, target, status, details, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6)
@@ -28,4 +33,12 @@ func LogActivity(userID *int, action, target, status string, details interface{}
 			log.Printf("Failed to log activity: %v", err)
 		}
 	}()
+}
+
+func activityDetailsJSON(details interface{}) []byte {
+	detailsJSON, err := json.Marshal(details)
+	if err != nil {
+		return []byte(`{"error":"failed to serialize activity details"}`)
+	}
+	return detailsJSON
 }

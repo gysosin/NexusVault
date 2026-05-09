@@ -25,6 +25,8 @@ type Config struct {
 	AllowPublicRegistration bool
 	AuthRateLimitRequests   int
 	AuthRateLimitWindow     time.Duration
+	SSHKnownHostsPath       string
+	AllowInsecureSSHHostKey bool
 }
 
 var Envs Config
@@ -36,7 +38,9 @@ func InitConfig() {
 	}
 
 	nodeEnv := getEnv("NODE_ENV", "development")
-	allowPublicRegistrationDefault := !strings.EqualFold(strings.TrimSpace(nodeEnv), "production")
+	isProduction := strings.EqualFold(strings.TrimSpace(nodeEnv), "production")
+	allowPublicRegistrationDefault := !isProduction
+	allowInsecureSSHHostKeyDefault := !isProduction
 
 	Envs = Config{
 		Port:                    getEnv("PORT", "3000"),
@@ -49,6 +53,8 @@ func InitConfig() {
 		AllowPublicRegistration: getBoolEnv("ALLOW_PUBLIC_REGISTRATION", allowPublicRegistrationDefault),
 		AuthRateLimitRequests:   getIntEnv("AUTH_RATE_LIMIT_REQUESTS", 10),
 		AuthRateLimitWindow:     getDurationEnv("AUTH_RATE_LIMIT_WINDOW", time.Minute),
+		SSHKnownHostsPath:       strings.TrimSpace(getEnv("SSH_KNOWN_HOSTS_PATH", "")),
+		AllowInsecureSSHHostKey: getBoolEnv("ALLOW_INSECURE_SSH_HOST_KEYS", allowInsecureSSHHostKeyDefault),
 	}
 
 	if err := Envs.Validate(); err != nil {

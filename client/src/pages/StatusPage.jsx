@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Server, Database, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { requestJson } from '@/api/client';
 
 export function StatusPage() {
     const [status, setStatus] = useState(null);
@@ -11,11 +12,7 @@ export function StatusPage() {
     const fetchStatus = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/health');
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const data = await response.json();
+            const data = await requestJson('/api/health');
             setStatus(data);
         } catch (error) {
             console.error('Failed to fetch status:', error);

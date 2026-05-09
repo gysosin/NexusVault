@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -64,6 +64,7 @@ export function Dashboard({
     error = null,
     connectionHealth = {},
     onCheckHealth,
+    onFavorite,
     recentSessions = [],
     isLoadingRecentSessions = false,
     recentSessionsError = null,
@@ -80,6 +81,10 @@ export function Dashboard({
     const healthSummary = useMemo(
         () => buildHealthSummary(connections, connectionHealth),
         [connections, connectionHealth]
+    );
+    const favoriteConnections = useMemo(
+        () => connections.filter((connection) => connection.isFavorite),
+        [connections]
     );
 
     const filtered = connections.filter((c) =>
@@ -102,6 +107,13 @@ export function Dashboard({
             </div>
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
+
+            <FavoriteConnectionsRail
+                favorites={favoriteConnections}
+                isLoading={isLoading}
+                onConnect={onConnect}
+                onFavorite={onFavorite}
+            />
 
             <ConnectionHealthSnapshot summary={healthSummary} isLoading={isLoading} />
 
@@ -140,6 +152,7 @@ export function Dashboard({
                         health={connectionHealth[conn.id]}
                         onConnect={onConnect}
                         onDelete={onDelete}
+                        onFavorite={onFavorite}
                         onCheckHealth={onCheckHealth}
                     />
                 ))}
@@ -237,6 +250,66 @@ function HealthSummaryPill({ label, value, tone, isLoading }) {
                 <p className={`mt-1 text-lg font-semibold ${tone}`}>{value}</p>
             )}
         </div>
+    );
+}
+
+function FavoriteConnectionsRail({ favorites, isLoading, onConnect, onFavorite }) {
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <Star className="h-4 w-4 text-amber-300" />
+                    Favorite connections
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-400">
+                    Pin critical targets here for faster session starts.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <div key={index} className="h-20 animate-pulse rounded-md border border-white/10 bg-white/[0.03]" />
+                        ))}
+                    </div>
+                ) : favorites.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-gray-400">
+                        No favorites yet. Star a connection card to keep it in this rail.
+                    </div>
+                ) : (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {favorites.map((connection) => (
+                            <div key={connection.id} className="rounded-md border border-amber-500/20 bg-amber-500/[0.06] p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-white">{connection.name}</p>
+                                        <p className="mt-1 truncate font-mono text-xs text-amber-100/70">
+                                            {connection.username}@{connection.host}:{connection.port}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 shrink-0 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
+                                        onClick={() => onFavorite?.(connection.id, false)}
+                                        aria-label={`Remove ${connection.name} from favorites`}
+                                    >
+                                        <Star className="h-4 w-4 fill-current" />
+                                    </Button>
+                                </div>
+                                <Button
+                                    className="mt-3 h-8 w-full bg-white/5 text-xs text-gray-200 hover:bg-white/10 hover:text-white"
+                                    onClick={() => onConnect(connection)}
+                                >
+                                    <Terminal className="mr-2 h-3.5 w-3.5" />
+                                    Launch
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -360,7 +433,7 @@ function ConnectionGridSkeleton() {
     ));
 }
 
-function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onCheckHealth }) {
+function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onFavorite, onCheckHealth }) {
     const getActiveSessionCount = (connection) => {
         return sessions.filter(s => (
             s.connectionId === connection.id ||
@@ -385,6 +458,15 @@ function ConnectionCard({ conn, sessions, health, onConnect, onDelete, onCheckHe
                         <Server className="h-5 w-5" />
                     </div>
                     <div className="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 hover:bg-amber-500/10 ${conn.isFavorite ? 'text-amber-300 hover:text-amber-200' : 'text-muted-foreground hover:text-amber-200'}`}
+                            onClick={() => onFavorite?.(conn.id, !conn.isFavorite)}
+                            aria-label={conn.isFavorite ? `Remove ${conn.name} from favorites` : `Add ${conn.name} to favorites`}
+                        >
+                            <Star className={`h-4 w-4 ${conn.isFavorite ? 'fill-current' : ''}`} />
+                        </Button>
                         {isConnected && (
                             <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20 mr-2">
                                 <Activity className="w-3 h-3 mr-1" />

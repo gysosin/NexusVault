@@ -29,3 +29,9 @@ export const checkConnectionHealth = (id) =>
   requestJson(`/api/connections/${encodeURIComponent(id)}/health`, {
     timeoutMs: 5000,
   });
+
+export const setConnectionFavorite = (id, isFavorite) =>
+  requestJson(`/api/connections/${encodeURIComponent(id)}/favorite`, {
+    method: 'PATCH',
+    body: { isFavorite },
+  });

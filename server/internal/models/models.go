@@ -16,14 +16,15 @@ type User struct {
 }
 
 type Connection struct {
-	ID        int       `db:"id" json:"id"`
-	UserID    int       `db:"user_id" json:"userId"`
-	Name      string    `db:"name" json:"name"`
-	Host      string    `db:"host" json:"host"`
-	Port      int       `db:"port" json:"port"`
+	ID          int       `db:"id" json:"id"`
+	UserID      int       `db:"user_id" json:"userId"`
+	Name        string    `db:"name" json:"name"`
+	Host        string    `db:"host" json:"host"`
+	Port        int       `db:"port" json:"port"`
 	Username    string    `db:"username" json:"username"`
 	Password    string    `db:"password" json:"-"` // Encrypted
 	HasPassword bool      `db:"has_password" json:"hasPassword"`
+	IsFavorite  bool      `db:"is_favorite" json:"isFavorite"`
 	Type        string    `db:"type" json:"type"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 }

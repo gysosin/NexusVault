@@ -69,6 +69,7 @@ func main() {
 			connections.GET("/", apiPkg.GetConnections)
 			connections.POST("/", apiPkg.CreateConnection)
 			connections.GET("/:id/health", apiPkg.CheckConnectionHealth)
+			connections.PATCH("/:id/favorite", apiPkg.UpdateConnectionFavorite)
 			connections.PUT("/:id", apiPkg.UpdateConnection)
 			connections.DELETE("/:id", apiPkg.DeleteConnection)
 		}

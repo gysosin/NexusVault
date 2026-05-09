@@ -110,6 +110,19 @@ export const DashboardPage = ({ setView }) => {
         }
     };
 
+    const handleFavoriteConnection = async (id, isFavorite) => {
+        try {
+            const updated = await connectionApi.setConnectionFavorite(id, isFavorite);
+            setConnections((prev) => prev.map((conn) => (
+                conn.id === id ? { ...conn, isFavorite: updated.isFavorite } : conn
+            )));
+            setConnectionError(null);
+        } catch (err) {
+            console.error('Failed to update favorite connection', err);
+            setConnectionError(err.message || 'Failed to update favorite connection.');
+        }
+    };
+
     const initiateConnection = (connection) => {
         setPendingConnection(connection);
         setConnectionPassword('');
@@ -142,6 +155,7 @@ export const DashboardPage = ({ setView }) => {
                 error={connectionError}
                 connectionHealth={connectionHealth}
                 onCheckHealth={handleCheckConnectionHealth}
+                onFavorite={handleFavoriteConnection}
                 recentSessions={recentSessions}
                 isLoadingRecentSessions={isLoadingRecentSessions}
                 recentSessionsError={recentSessionsError}

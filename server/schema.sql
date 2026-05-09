@@ -18,12 +18,16 @@ CREATE TABLE IF NOT EXISTS connections (
     username VARCHAR(255) NOT NULL,
     password VARCHAR(255),
     has_password BOOLEAN DEFAULT FALSE,
+    is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
     type VARCHAR(50) DEFAULT 'ssh',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_connections_user_created_at
     ON connections (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_connections_user_favorite_created_at
+    ON connections (user_id, is_favorite, created_at DESC);
 
 -- Activity Logs table
 CREATE TABLE IF NOT EXISTS activity_logs (

@@ -37,6 +37,10 @@ type UpdateConnectionRequest struct {
 	Type     string `json:"type"`
 }
 
+type UpdateConnectionFavoriteRequest struct {
+	IsFavorite *bool `json:"isFavorite" binding:"required"`
+}
+
 type ConnectionHealthResponse struct {
 	ConnectionID int       `json:"connectionId"`
 	Status       string    `json:"status"`
@@ -51,7 +55,7 @@ func GetConnections(c *gin.Context) {
 	defer cancel()
 
 	var connections []models.Connection
-	query := `SELECT id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE user_id = $1 ORDER BY created_at DESC`
+	query := `SELECT id, user_id, name, host, port, username, type, is_favorite, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE user_id = $1 ORDER BY is_favorite DESC, created_at DESC`
 	err := db.DB.SelectContext(ctx, &connections, query, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch connections"})
@@ -94,7 +98,7 @@ func CreateConnection(c *gin.Context) {
 	}
 
 	var conn models.Connection
-	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
+	query := `INSERT INTO connections (user_id, name, host, port, username, password, type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, name, host, port, username, type, is_favorite, created_at, (password IS NOT NULL AND password != '') as has_password`
 	err = db.DB.QueryRowxContext(ctx, query, userID, fields.Name, fields.Host, fields.Port, fields.Username, encryptedPassword, fields.Type).StructScan(&conn)
 
 	if err != nil {
@@ -178,7 +182,7 @@ func UpdateConnection(c *gin.Context) {
 	}
 
 	var updated models.Connection
-	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password`
+	query := `UPDATE connections SET name = $1, host = $2, port = $3, username = $4, password = $5, type = $6 WHERE id = $7 AND user_id = $8 RETURNING id, user_id, name, host, port, username, type, is_favorite, created_at, (password IS NOT NULL AND password != '') as has_password`
 	err = db.DB.QueryRowxContext(ctx, query, fields.Name, fields.Host, fields.Port, fields.Username, password, fields.Type, id, userID).StructScan(&updated)
 
 	if err != nil {
@@ -216,6 +220,35 @@ func DeleteConnection(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func UpdateConnectionFavorite(c *gin.Context) {
+	userID, _ := c.Get("userId")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
+	defer cancel()
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid connection ID"})
+		return
+	}
+
+	var req UpdateConnectionFavoriteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var updated models.Connection
+	query := `UPDATE connections SET is_favorite = $1 WHERE id = $2 AND user_id = $3 RETURNING id, user_id, name, host, port, username, type, is_favorite, created_at, (password IS NOT NULL AND password != '') as has_password`
+	err = db.DB.QueryRowxContext(ctx, query, *req.IsFavorite, id, userID).StructScan(&updated)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Connection not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updated)
+}
+
 func CheckConnectionHealth(c *gin.Context) {
 	userID, _ := c.Get("userId")
 	dbCtx, cancel := context.WithTimeout(c.Request.Context(), connectionDatabaseTimeout)
@@ -229,7 +262,7 @@ func CheckConnectionHealth(c *gin.Context) {
 	}
 
 	var conn models.Connection
-	err = db.DB.GetContext(dbCtx, &conn, "SELECT id, user_id, name, host, port, username, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", id, userID)
+	err = db.DB.GetContext(dbCtx, &conn, "SELECT id, user_id, name, host, port, username, type, is_favorite, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", id, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Connection not found"})
 		return

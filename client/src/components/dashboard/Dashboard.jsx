@@ -2,13 +2,20 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone, Bookmark } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
 import { buildConnectionRiskSummary } from '@/lib/connectionRisk';
 import { getQuickLaunchMatches } from '@/lib/quickLaunch';
 import { buildProtocolUtilization } from '@/lib/protocolUtilization';
+import {
+    filterConnectionsByDashboardView,
+    getDashboardView,
+    getDashboardViewCards,
+    loadDashboardViewId,
+    persistDashboardViewId,
+} from '@/lib/dashboardViews';
 
 const analyticsIcons = {
     totalConnections: Database,
@@ -103,39 +110,59 @@ export function Dashboard({
 }) {
     const [search, setSearch] = useState('');
     const [quickLaunchQuery, setQuickLaunchQuery] = useState('');
+    const [selectedDashboardViewId, setSelectedDashboardViewId] = useState(() => loadDashboardViewId());
     const [isAddOpen, setIsAddOpen] = useState(false);
 
+    const scopedConnections = useMemo(
+        () => filterConnectionsByDashboardView(connections, selectedDashboardViewId),
+        [connections, selectedDashboardViewId]
+    );
+
+    const dashboardViews = useMemo(
+        () => getDashboardViewCards(connections),
+        [connections]
+    );
+
+    const selectedDashboardView = useMemo(
+        () => getDashboardView(selectedDashboardViewId),
+        [selectedDashboardViewId]
+    );
+
     const analytics = useMemo(
-        () => buildDashboardAnalytics({ connections, sessions }),
-        [connections, sessions]
+        () => buildDashboardAnalytics({ connections: scopedConnections, sessions }),
+        [scopedConnections, sessions]
     );
 
     const healthSummary = useMemo(
-        () => buildHealthSummary(connections, connectionHealth),
-        [connections, connectionHealth]
+        () => buildHealthSummary(scopedConnections, connectionHealth),
+        [scopedConnections, connectionHealth]
     );
     const favoriteConnections = useMemo(
         () => connections.filter((connection) => connection.isFavorite),
         [connections]
     );
     const riskSummary = useMemo(
-        () => buildConnectionRiskSummary(connections),
-        [connections]
+        () => buildConnectionRiskSummary(scopedConnections),
+        [scopedConnections]
     );
     const quickLaunchMatches = useMemo(
         () => getQuickLaunchMatches(connections, quickLaunchQuery, 5),
         [connections, quickLaunchQuery]
     );
     const protocolUtilization = useMemo(
-        () => buildProtocolUtilization(connections),
-        [connections]
+        () => buildProtocolUtilization(scopedConnections),
+        [scopedConnections]
     );
 
-    const filtered = connections.filter((c) =>
+    const filtered = scopedConnections.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.host.toLowerCase().includes(search.toLowerCase())
     );
 
+    const handleDashboardViewSelect = (viewId) => {
+        setSelectedDashboardViewId(viewId);
+        persistDashboardViewId(viewId);
+    };
 
 
     return (
@@ -154,6 +181,13 @@ export function Dashboard({
                 banner={maintenanceBanner}
                 isLoading={isLoadingMaintenanceBanner}
                 error={maintenanceBannerError}
+            />
+
+            <SavedDashboardViews
+                views={dashboardViews}
+                selectedViewId={selectedDashboardView.id}
+                isLoading={isLoading}
+                onSelect={handleDashboardViewSelect}
             />
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
@@ -178,7 +212,7 @@ export function Dashboard({
 
             <ConnectionRiskSummary summary={riskSummary} isLoading={isLoading} />
 
-            <ProtocolUtilizationChart rows={protocolUtilization} isLoading={isLoading} total={connections.length} />
+            <ProtocolUtilizationChart rows={protocolUtilization} isLoading={isLoading} total={scopedConnections.length} />
 
             <FailedLoginTrend
                 trend={failedLoginTrend}
@@ -203,7 +237,7 @@ export function Dashboard({
             <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search connections..."
+                    placeholder={`Search ${selectedDashboardView.label.toLowerCase()}...`}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 max-w-md bg-card/50 backdrop-blur-sm border-white/10 focus:border-primary/50"
@@ -228,7 +262,7 @@ export function Dashboard({
                 ))}
                 {!isLoading && filtered.length === 0 && (
                     <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed border-white/10 rounded-lg bg-white/5">
-                        No connections found. Create one to get started.
+                        No connections match this saved view.
                     </div>
                 )}
             </div>
@@ -274,6 +308,57 @@ function MaintenanceBannerNotice({ banner, isLoading, error }) {
                 {config.label}
             </Badge>
         </div>
+    );
+}
+
+function SavedDashboardViews({ views, selectedViewId, isLoading, onSelect }) {
+    return (
+        <Card className="border-white/10 bg-[#07111d]/80">
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <Bookmark className="h-4 w-4 text-primary" />
+                    Saved dashboard views
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-400">
+                    Switch the dashboard to the access slice you need right now.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                    {isLoading ? (
+                        Array.from({ length: 5 }).map((_, index) => (
+                            <div key={index} className="h-24 animate-pulse rounded-md border border-white/10 bg-white/[0.04]" />
+                        ))
+                    ) : (
+                        views.map((view) => {
+                            const isSelected = view.id === selectedViewId;
+                            return (
+                                <button
+                                    key={view.id}
+                                    type="button"
+                                    aria-pressed={isSelected}
+                                    onClick={() => onSelect(view.id)}
+                                    className={`min-h-24 rounded-md border px-4 py-3 text-left transition-colors ${isSelected
+                                        ? 'border-primary/50 bg-primary/10 text-white'
+                                        : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-primary/30 hover:bg-white/[0.06]'
+                                        }`}
+                                >
+                                    <span className="flex items-center justify-between gap-3">
+                                        <span className="text-sm font-medium">{view.label}</span>
+                                        <span className="rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-xs font-semibold text-white">
+                                            {view.count}
+                                        </span>
+                                    </span>
+                                    <span className="mt-2 block text-xs leading-5 text-gray-500">
+                                        {view.description}
+                                    </span>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 

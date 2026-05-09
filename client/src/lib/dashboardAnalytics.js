@@ -2,7 +2,13 @@ const asCount = (value) => String(value);
 
 export const buildDashboardAnalytics = ({ connections = [], sessions = [] } = {}) => {
   const totalConnections = connections.length;
-  const activeSessions = sessions.length;
+  const activeSessions = sessions.filter((session) => (
+    connections.some((connection) => (
+      session.connectionId === connection.id ||
+      session.connection_id === connection.id ||
+      (session.host === connection.host && session.username === connection.username)
+    ))
+  )).length;
   const sshCount = connections.filter((connection) => (connection.type || 'ssh') === 'ssh').length;
   const rdpCount = connections.filter((connection) => connection.type === 'rdp').length;
   const credentialCount = connections.filter((connection) => connection.hasPassword).length;

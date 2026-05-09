@@ -18,7 +18,7 @@ export const buildConnectionRiskSummary = (connections = []) => {
   };
 };
 
-const buildConnectionRiskReasons = (connection) => {
+export const buildConnectionRiskReasons = (connection) => {
   const reasons = [];
   if (!connection.hasPassword) {
     reasons.push('No stored credential');

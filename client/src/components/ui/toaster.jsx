@@ -1,7 +1,6 @@
 import { useToast } from "../../hooks/use-toast"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion as Motion } from "framer-motion"
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react"
-import { useEffect } from "react"
 
 export function Toaster() {
     const { toasts, dismiss } = useToast()
@@ -9,9 +8,9 @@ export function Toaster() {
     return (
         <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-sm pointer-events-none">
             <AnimatePresence mode="popLayout">
-                {toasts.map(function ({ id, title, description, action, variant = "default", ...props }) {
+                {toasts.map(function ({ id, title, description, variant = "default", ...props }) {
                     return (
-                        <motion.div
+                        <Motion.div
                             key={id}
                             initial={{ opacity: 0, y: 20, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -48,7 +47,7 @@ export function Toaster() {
                             >
                                 <X className="h-4 w-4" />
                             </button>
-                        </motion.div>
+                        </Motion.div>
                     )
                 })}
             </AnimatePresence>

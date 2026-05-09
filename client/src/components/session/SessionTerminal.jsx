@@ -47,7 +47,7 @@ export function SessionTerminal({
         return `${protocol}//${host}/ws`;
     }, [wsEndpoint]);
 
-    const addLog = useCallback((message, level = 'info') => {
+    const addLog = useCallback((message) => {
         const timestamp = new Date().toLocaleTimeString();
         const logEntry = `[${timestamp}] ${message}`;
         console.log(`[Session ${session.id}] ${message}`);
@@ -240,7 +240,7 @@ export function SessionTerminal({
             pendingInitObserver?.disconnect();
             terminalDisposal?.();
         };
-    }, [terminalViewVisible, sendResize, session.host, session.username]);
+    }, [isPreview, sendResize, session.host, session.id, session.username, terminalViewVisible]);
 
     // Handle WebSocket Connection
     useEffect(() => {
@@ -249,7 +249,6 @@ export function SessionTerminal({
 
         const ws = new WebSocket(withWebSocketToken(wsUrl, authToken));
         wsRef.current = ws;
-        updateStatus('Connecting...');
 
         ws.onopen = () => {
             addLog('WebSocket opened');
@@ -300,7 +299,7 @@ export function SessionTerminal({
             let data;
             try {
                 data = JSON.parse(event.data);
-            } catch (e) {
+            } catch {
                 return;
             }
 
@@ -352,7 +351,7 @@ export function SessionTerminal({
                 ws.close();
             }
         };
-    }, [authToken, session.id, session.host, session.username, session.port, session.mode, session.connectionId, session.protocol, wsUrl, isPreview]);
+    }, [addLog, authToken, isPreview, sendResize, session, updateStatus, wsUrl]);
 
     // Handle Visibility/Resize when switching tabs
     useEffect(() => {
@@ -364,7 +363,7 @@ export function SessionTerminal({
                 termRef.current?.focus();
             }, 350);
         }
-    }, [isActive, sendResize]);
+    }, [isActive, sendResize, session.id]);
 
     const handleDisconnect = useCallback(() => {
         const ws = wsRef.current;

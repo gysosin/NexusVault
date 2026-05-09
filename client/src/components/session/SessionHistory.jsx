@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,7 @@ export function SessionHistory({ connectionId, authToken, open, onOpenChange }) 
     const [loading, setLoading] = useState(false);
     const [logContent, setLogContent] = useState('');
 
-    useEffect(() => {
-        if (open && connectionId) {
-            fetchHistory();
-        }
-    }, [open, connectionId]);
-
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/sessions/history?connectionId=${connectionId}`, {
@@ -31,7 +25,13 @@ export function SessionHistory({ connectionId, authToken, open, onOpenChange }) 
         } finally {
             setLoading(false);
         }
-    };
+    }, [authToken, connectionId]);
+
+    useEffect(() => {
+        if (open && connectionId) {
+            fetchHistory();
+        }
+    }, [open, connectionId, fetchHistory]);
 
     const fetchSessionLog = async (sessionId) => {
         try {

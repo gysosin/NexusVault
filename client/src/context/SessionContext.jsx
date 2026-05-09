@@ -164,10 +164,7 @@ export const SessionProvider = ({ children }) => {
                     } else if (msg.type === 'session_terminated') {
                         const terminatedId = msg.sessionId;
                         setSessions(prev => prev.filter(s => s.id !== terminatedId && s.serverId !== terminatedId));
-                        // Also update active session if needed
-                        if (activeSessionId === terminatedId) {
-                            setActiveSessionId(null); // Or select another
-                        }
+                        setActiveSessionId(prev => prev === terminatedId ? null : prev);
                     }
                 } catch (e) {
                     console.error('Failed to parse notification:', e);

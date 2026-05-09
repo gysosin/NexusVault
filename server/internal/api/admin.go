@@ -250,7 +250,10 @@ func CreateUser(c *gin.Context) {
 
 	var user models.User
 	query := `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role, created_at`
-	if err := db.DB.QueryRowx(query, req.Username, req.Email, string(hashedPassword), req.Role).StructScan(&user); err != nil {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	if err := db.DB.QueryRowxContext(ctx, query, req.Username, req.Email, string(hashedPassword), req.Role).StructScan(&user); err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
 			return
@@ -276,7 +279,10 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	result, err := db.DB.Exec("DELETE FROM users WHERE id = $1", id)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	result, err := db.DB.ExecContext(ctx, "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
@@ -318,7 +324,10 @@ func UpdateUserRole(c *gin.Context) {
 
 	var user models.User
 	query := `UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, email, role, created_at`
-	if err := db.DB.QueryRowx(query, req.Role, id).StructScan(&user); err != nil {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	if err := db.DB.QueryRowxContext(ctx, query, req.Role, id).StructScan(&user); err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return

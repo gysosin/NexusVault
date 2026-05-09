@@ -13,13 +13,14 @@ import (
 const minProductionSecretLength = 32
 
 type Config struct {
-	Port           string
-	DatabaseURL    string
-	JWTSecret      string
-	APISecret      string
-	NodeEnv        string
-	RedisURL       string
-	AllowedOrigins string
+	Port                    string
+	DatabaseURL             string
+	JWTSecret               string
+	APISecret               string
+	NodeEnv                 string
+	RedisURL                string
+	AllowedOrigins          string
+	AllowPublicRegistration bool
 }
 
 var Envs Config
@@ -30,14 +31,18 @@ func InitConfig() {
 		log.Println("No .env file found or error loading it, relying on system env vars")
 	}
 
+	nodeEnv := getEnv("NODE_ENV", "development")
+	allowPublicRegistrationDefault := !strings.EqualFold(strings.TrimSpace(nodeEnv), "production")
+
 	Envs = Config{
-		Port:           getEnv("PORT", "3000"),
-		DatabaseURL:    getEnv("DATABASE_URL", ""),
-		JWTSecret:      getEnv("JWT_SECRET", "default_secret"),
-		APISecret:      getEnv("API_SECRET", "default_api_secret"),
-		NodeEnv:        getEnv("NODE_ENV", "development"),
-		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379"),
-		AllowedOrigins: getEnv("ALLOWED_ORIGINS", ""),
+		Port:                    getEnv("PORT", "3000"),
+		DatabaseURL:             getEnv("DATABASE_URL", ""),
+		JWTSecret:               getEnv("JWT_SECRET", "default_secret"),
+		APISecret:               getEnv("API_SECRET", "default_api_secret"),
+		NodeEnv:                 nodeEnv,
+		RedisURL:                getEnv("REDIS_URL", "redis://localhost:6379"),
+		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", ""),
+		AllowPublicRegistration: getBoolEnv("ALLOW_PUBLIC_REGISTRATION", allowPublicRegistrationDefault),
 	}
 
 	if err := Envs.Validate(); err != nil {
@@ -50,6 +55,22 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getBoolEnv(key string, fallback bool) bool {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return fallback
+	}
 }
 
 func (c Config) Validate() error {

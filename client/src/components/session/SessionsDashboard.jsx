@@ -1,10 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Terminal, Activity, Clock, Monitor } from 'lucide-react';
-import { SessionTerminal } from './SessionTerminal';
-import SessionRDP from './SessionRDP';
+const SessionTerminal = lazy(() => import('./SessionTerminal').then((module) => ({ default: module.SessionTerminal })));
+const SessionRDP = lazy(() => import('./SessionRDP'));
+
+const PreviewFallback = () => (
+    <div className="h-full w-full bg-[#05070e] flex items-center justify-center text-xs text-gray-500">
+        Loading preview...
+    </div>
+);
 
 export function SessionsDashboard({ sessions, onSwitchSession, previewMode = 'hover' }) {
     // Group sessions by connection (User@Host)
@@ -112,21 +118,23 @@ function SessionCard({ session, onClick, previewMode }) {
                 <div className="absolute inset-0 overflow-hidden">
                     {showLivePreview ? (
                         <div className="w-[200%] h-[200%] origin-top-left scale-50 pointer-events-none select-none">
-                            {session.protocol === 'rdp' ? (
-                                <SessionRDP
-                                    session={session}
-                                    onClose={() => { }}
-                                    onFocus={() => { }}
-                                    onSessionMetadata={() => { }}
-                                />
-                            ) : (
-                                <SessionTerminal
-                                    session={session}
-                                    isActive={true} // Always active for preview so it renders
-                                    terminalViewVisible={true}
-                                    isPreview={true}
-                                />
-                            )}
+                            <Suspense fallback={<PreviewFallback />}>
+                                {session.protocol === 'rdp' ? (
+                                    <SessionRDP
+                                        session={session}
+                                        onClose={() => { }}
+                                        onFocus={() => { }}
+                                        onSessionMetadata={() => { }}
+                                    />
+                                ) : (
+                                    <SessionTerminal
+                                        session={session}
+                                        isActive={true}
+                                        terminalViewVisible={true}
+                                        isPreview={true}
+                                    />
+                                )}
+                            </Suspense>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-2">

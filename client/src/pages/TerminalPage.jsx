@@ -1,9 +1,16 @@
-import React from 'react';
-import { SessionTerminal } from '../components/session/SessionTerminal';
-import SessionRDP from '../components/session/SessionRDP';
+import React, { Suspense, lazy } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSession } from '../context/SessionContext';
 import { Plus } from 'lucide-react';
+
+const SessionTerminal = lazy(() => import('../components/session/SessionTerminal').then((module) => ({ default: module.SessionTerminal })));
+const SessionRDP = lazy(() => import('../components/session/SessionRDP'));
+
+const TerminalFallback = ({ session }) => (
+    <div className="h-full w-full bg-[#090c14] flex items-center justify-center text-sm text-gray-400">
+        Loading {session?.protocol === 'rdp' ? 'RDP' : 'terminal'} session...
+    </div>
+);
 
 export function TerminalPage({ visible, setView }) {
     const { sessions, activeSessionId, closeSession, updateSessionStatus, setActiveSessionId, setSessionServerId } = useSession();
@@ -38,29 +45,31 @@ export function TerminalPage({ visible, setView }) {
                         key={session.id}
                         className={`absolute inset-0 ${isActive ? 'z-10 visible' : 'z-0 invisible'}`}
                     >
-                        {session.protocol === 'rdp' ? (
-                            <SessionRDP
-                                session={session}
-                                onClose={() => {
-                                    closeSession(session.id);
-                                    if (isActive) setView('dashboard');
-                                }}
-                                onFocus={() => setActiveSessionId(session.id)}
-                                onSessionMetadata={setSessionServerId}
-                            />
-                        ) : (
-                            <SessionTerminal
-                                session={session}
-                                isActive={isActive}
-                                onClose={() => {
-                                    closeSession(session.id);
-                                    if (isActive) setView('dashboard');
-                                }}
-                                onStatusChange={updateSessionStatus}
-                                onSessionMetadata={setSessionServerId}
-                                terminalViewVisible={visible}
-                            />
-                        )}
+                        <Suspense fallback={<TerminalFallback session={session} />}>
+                            {session.protocol === 'rdp' ? (
+                                <SessionRDP
+                                    session={session}
+                                    onClose={() => {
+                                        closeSession(session.id);
+                                        if (isActive) setView('dashboard');
+                                    }}
+                                    onFocus={() => setActiveSessionId(session.id)}
+                                    onSessionMetadata={setSessionServerId}
+                                />
+                            ) : (
+                                <SessionTerminal
+                                    session={session}
+                                    isActive={isActive}
+                                    onClose={() => {
+                                        closeSession(session.id);
+                                        if (isActive) setView('dashboard');
+                                    }}
+                                    onStatusChange={updateSessionStatus}
+                                    onSessionMetadata={setSessionServerId}
+                                    terminalViewVisible={visible}
+                                />
+                            )}
+                        </Suspense>
                     </div>
                 );
             })}

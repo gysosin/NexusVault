@@ -93,6 +93,7 @@ func main() {
 	})
 
 	r.GET("/api/health", apiPkg.GetHealthStatus)
+	r.GET("/api/ready", apiPkg.GetReadinessStatus)
 	registerStaticRoutes(r, staticAssetDir())
 
 	port := config.Envs.Port

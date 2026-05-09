@@ -19,6 +19,20 @@ type HealthStatus struct {
 const healthDependencyTimeout = 2 * time.Second
 
 func GetHealthStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, collectHealthStatus(c))
+}
+
+func GetReadinessStatus(c *gin.Context) {
+	status := collectHealthStatus(c)
+	if status.Status != "operational" {
+		c.JSON(http.StatusServiceUnavailable, status)
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+func collectHealthStatus(c *gin.Context) HealthStatus {
 	status := HealthStatus{
 		Status:   "operational",
 		Database: "operational",
@@ -42,5 +56,5 @@ func GetHealthStatus(c *gin.Context) {
 		status.Status = "down"
 	}
 
-	c.JSON(http.StatusOK, status)
+	return status
 }

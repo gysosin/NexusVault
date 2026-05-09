@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History, Star, ShieldAlert, Command, ArrowRight, ShieldX, Megaphone } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -50,6 +50,27 @@ const healthStatusConfig = {
     },
 };
 
+const maintenanceBannerConfig = {
+    info: {
+        label: 'Notice',
+        className: 'border-sky-500/30 bg-sky-500/10 text-sky-100',
+        badgeClassName: 'border-sky-400/30 bg-sky-400/10 text-sky-200',
+        iconClassName: 'text-sky-300',
+    },
+    warning: {
+        label: 'Maintenance',
+        className: 'border-amber-500/30 bg-amber-500/10 text-amber-100',
+        badgeClassName: 'border-amber-400/30 bg-amber-400/10 text-amber-200',
+        iconClassName: 'text-amber-300',
+    },
+    critical: {
+        label: 'Critical',
+        className: 'border-red-500/30 bg-red-500/10 text-red-100',
+        badgeClassName: 'border-red-400/30 bg-red-400/10 text-red-200',
+        iconClassName: 'text-red-300',
+    },
+};
+
 const getHealthStatus = (health) => {
     if (!health?.status || !healthStatusConfig[health.status]) {
         return 'unknown';
@@ -76,6 +97,9 @@ export function Dashboard({
     isLoadingFailedLoginTrend = false,
     failedLoginTrendError = null,
     onRefreshFailedLoginTrend,
+    maintenanceBanner = null,
+    isLoadingMaintenanceBanner = false,
+    maintenanceBannerError = null,
 }) {
     const [search, setSearch] = useState('');
     const [quickLaunchQuery, setQuickLaunchQuery] = useState('');
@@ -125,6 +149,12 @@ export function Dashboard({
                     <Plus className="mr-2 h-4 w-4" /> New Connection
                 </Button>
             </div>
+
+            <MaintenanceBannerNotice
+                banner={maintenanceBanner}
+                isLoading={isLoadingMaintenanceBanner}
+                error={maintenanceBannerError}
+            />
 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
 
@@ -209,6 +239,41 @@ export function Dashboard({
                 onAdd={onAdd}
             />
         </div >
+    );
+}
+
+function MaintenanceBannerNotice({ banner, isLoading, error }) {
+    if (isLoading) {
+        return (
+            <div className="h-14 animate-pulse rounded-md border border-white/10 bg-white/[0.04]" aria-label="Loading maintenance notice" />
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="alert">
+                <Megaphone className="h-4 w-4 shrink-0 text-amber-300" />
+                <span>{error}</span>
+            </div>
+        );
+    }
+
+    if (!banner?.enabled || !banner.message) {
+        return null;
+    }
+
+    const config = maintenanceBannerConfig[banner.severity] || maintenanceBannerConfig.info;
+
+    return (
+        <div className={`flex flex-col gap-3 rounded-md border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${config.className}`} role="status" aria-live="polite">
+            <div className="flex min-w-0 items-start gap-3">
+                <Megaphone className={`mt-0.5 h-4 w-4 shrink-0 ${config.iconClassName}`} />
+                <p className="text-sm leading-6">{banner.message}</p>
+            </div>
+            <Badge variant="outline" className={`w-fit shrink-0 ${config.badgeClassName}`}>
+                {config.label}
+            </Badge>
+        </div>
     );
 }
 

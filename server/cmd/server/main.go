@@ -88,12 +88,19 @@ func main() {
 			security.GET("/failed-logins/trend", apiPkg.GetFailedLoginTrend)
 		}
 
+		system := api.Group("/system")
+		system.Use(middleware.AuthRequired())
+		{
+			system.GET("/maintenance-banner", apiPkg.GetMaintenanceBanner)
+		}
+
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthRequired())
 		admin.Use(middleware.RequireRole("admin"))
 		{
 			admin.GET("/settings", apiPkg.GetSystemSettings)
 			admin.POST("/settings", apiPkg.UpdateSystemSettings)
+			admin.PUT("/settings", apiPkg.UpdateSystemSettings)
 			admin.GET("/users", apiPkg.GetUsers)
 			admin.POST("/users", apiPkg.CreateUser)
 			admin.DELETE("/users/:id", apiPkg.DeleteUser)

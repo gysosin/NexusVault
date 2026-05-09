@@ -9,6 +9,7 @@ import { useSession } from '../context/SessionContext';
 import * as connectionApi from '../api/connections';
 import * as sessionApi from '../api/sessions';
 import * as securityApi from '../api/security';
+import * as systemApi from '../api/system';
 
 export const DashboardPage = ({ setView }) => {
     const { sessions, createSession } = useSession();
@@ -26,6 +27,9 @@ export const DashboardPage = ({ setView }) => {
     const [failedLoginTrend, setFailedLoginTrend] = useState([]);
     const [isLoadingFailedLoginTrend, setIsLoadingFailedLoginTrend] = useState(true);
     const [failedLoginTrendError, setFailedLoginTrendError] = useState(null);
+    const [maintenanceBanner, setMaintenanceBanner] = useState(null);
+    const [isLoadingMaintenanceBanner, setIsLoadingMaintenanceBanner] = useState(true);
+    const [maintenanceBannerError, setMaintenanceBannerError] = useState(null);
 
     const fetchConnections = useCallback(async () => {
         setIsLoadingConnections(true);
@@ -80,6 +84,24 @@ export const DashboardPage = ({ setView }) => {
     useEffect(() => {
         fetchFailedLoginTrend();
     }, [fetchFailedLoginTrend]);
+
+    const fetchMaintenanceBanner = useCallback(async () => {
+        setIsLoadingMaintenanceBanner(true);
+        setMaintenanceBannerError(null);
+        try {
+            const data = await systemApi.getMaintenanceBanner();
+            setMaintenanceBanner(data);
+        } catch (err) {
+            console.error('Failed to fetch maintenance banner', err);
+            setMaintenanceBannerError(err.message || 'Failed to load maintenance banner.');
+        } finally {
+            setIsLoadingMaintenanceBanner(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchMaintenanceBanner();
+    }, [fetchMaintenanceBanner]);
 
     const handleAddConnection = async (newConnection) => {
         try {
@@ -186,6 +208,9 @@ export const DashboardPage = ({ setView }) => {
                 isLoadingFailedLoginTrend={isLoadingFailedLoginTrend}
                 failedLoginTrendError={failedLoginTrendError}
                 onRefreshFailedLoginTrend={fetchFailedLoginTrend}
+                maintenanceBanner={maintenanceBanner}
+                isLoadingMaintenanceBanner={isLoadingMaintenanceBanner}
+                maintenanceBannerError={maintenanceBannerError}
                 activeSession={null}
             />
 

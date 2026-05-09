@@ -394,7 +394,10 @@ func CreateRole(c *gin.Context) {
 		VALUES ($1, $2, $3, $4, NOW()) 
 		RETURNING id, name, description, permissions, created_at
 	`
-	if err := db.DB.QueryRowx(query, req.ID, req.Name, req.Description, val).StructScan(&role); err != nil {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	if err := db.DB.QueryRowxContext(ctx, query, req.ID, req.Name, req.Description, val).StructScan(&role); err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			c.JSON(http.StatusConflict, gin.H{"error": "Role already exists"})
 			return
@@ -421,7 +424,10 @@ func DeleteRole(c *gin.Context) {
 		return
 	}
 
-	result, err := db.DB.Exec("DELETE FROM roles WHERE id = $1", id)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
+
+	result, err := db.DB.ExecContext(ctx, "DELETE FROM roles WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete role"})
 		return

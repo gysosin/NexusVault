@@ -351,13 +351,17 @@ export function SessionTerminal({
 
     // Handle Visibility/Resize when switching tabs
     useEffect(() => {
-        if (isActive) {
-            // Small delay to allow layout to settle (increased to match transition duration)
-            setTimeout(() => {
-                sendResize();
-                termRef.current?.focus();
-            }, 350);
+        if (!isActive) {
+            return undefined;
         }
+
+        // Small delay to allow layout to settle (increased to match transition duration)
+        const focusTimeoutId = setTimeout(() => {
+            sendResize();
+            termRef.current?.focus();
+        }, 350);
+
+        return () => clearTimeout(focusTimeoutId);
     }, [isActive, sendResize, session.id]);
 
     const handleDisconnect = useCallback(() => {

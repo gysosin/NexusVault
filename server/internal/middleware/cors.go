@@ -8,7 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORSMiddleware sets permissive headers for browser clients and short-circuits OPTIONS requests.
+const corsPreflightMaxAgeSeconds = "600"
+
+// CORSMiddleware sets CORS headers for browser clients and short-circuits OPTIONS requests.
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
@@ -25,6 +27,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 
 		if c.Request.Method == "OPTIONS" {
+			c.Writer.Header().Set("Access-Control-Max-Age", corsPreflightMaxAgeSeconds)
 			c.AbortWithStatus(204)
 			return
 		}

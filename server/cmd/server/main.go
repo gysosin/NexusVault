@@ -63,7 +63,7 @@ func main() {
 
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthRequired())
-		// Add admin role check middleware here if needed
+		admin.Use(middleware.RequireRole("admin"))
 		{
 			admin.GET("/settings", apiPkg.GetSystemSettings)
 			admin.POST("/settings", apiPkg.UpdateSystemSettings)

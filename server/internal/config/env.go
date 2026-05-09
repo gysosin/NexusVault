@@ -136,6 +136,9 @@ func (c Config) Validate() error {
 	if isWeakProductionSecret(c.CredentialSecret, "default_api_secret") {
 		errs = append(errs, fmt.Errorf("CREDENTIAL_SECRET must be set to at least %d non-default characters in production", minProductionSecretLength))
 	}
+	if strings.TrimSpace(c.CredentialSecret) == strings.TrimSpace(c.APISecret) {
+		errs = append(errs, errors.New("CREDENTIAL_SECRET must be distinct from API_SECRET in production"))
+	}
 
 	return errors.Join(errs...)
 }

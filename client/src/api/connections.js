@@ -21,6 +21,6 @@ export const createConnection = (data) => {
 };
 
 export const deleteConnection = (id) => 
-  requestJson(`/api/connections/${id}`, {
+  requestJson(`/api/connections/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });

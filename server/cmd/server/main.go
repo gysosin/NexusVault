@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	apiPkg "go-server/internal/api"
 	"go-server/internal/config"
 	"go-server/internal/db"
@@ -9,9 +10,12 @@ import (
 	"go-server/internal/utils"
 	wsPkg "go-server/internal/websocket"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+const startupMaintenanceTimeout = 5 * time.Second
 
 func main() {
 	println("Starting server...")
@@ -21,7 +25,9 @@ func main() {
 	service.NotificationHub.InitRedisSub()
 
 	// Cleanup stale sessions
-	_, err := db.DB.Exec("UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE end_time IS NULL")
+	ctx, cancel := context.WithTimeout(context.Background(), startupMaintenanceTimeout)
+	_, err := db.DB.ExecContext(ctx, "UPDATE session_histories SET end_time = NOW(), status = 'terminated' WHERE end_time IS NULL")
+	cancel()
 	if err != nil {
 		utils.Log("Failed to cleanup stale sessions: " + err.Error())
 	} else {

@@ -130,25 +130,27 @@ func GetAdminStats(c *gin.Context) {
 	}
 
 	var stats statsResponse
+	dbCtx, cancel := context.WithTimeout(c.Request.Context(), adminDatabaseTimeout)
+	defer cancel()
 
-	if err := db.DB.Get(&stats.Users, "SELECT COUNT(*) FROM users"); err != nil {
+	if err := db.DB.GetContext(dbCtx, &stats.Users, "SELECT COUNT(*) FROM users"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user count"})
 		return
 	}
-	if err := db.DB.Get(&stats.Connections, "SELECT COUNT(*) FROM connections"); err != nil {
+	if err := db.DB.GetContext(dbCtx, &stats.Connections, "SELECT COUNT(*) FROM connections"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch connection count"})
 		return
 	}
-	if err := db.DB.Get(&stats.ActiveSessions, "SELECT COUNT(*) FROM session_histories WHERE end_time IS NULL"); err != nil {
+	if err := db.DB.GetContext(dbCtx, &stats.ActiveSessions, "SELECT COUNT(*) FROM session_histories WHERE end_time IS NULL"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch active session count"})
 		return
 	}
 
 	if db.Redis != nil {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), adminSessionScanTimeout)
+		redisCtx, cancel := context.WithTimeout(c.Request.Context(), adminSessionScanTimeout)
 		defer cancel()
 
-		loggedInUsers, err := countRedisSessionKeys(ctx)
+		loggedInUsers, err := countRedisSessionKeys(redisCtx)
 		if err != nil {
 			utils.Log("Failed to count logged-in users", err)
 		} else {

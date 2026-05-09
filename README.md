@@ -55,6 +55,8 @@ NexusVault is a web-based SSH/RDP client that bridges the browser to managed inf
     - `ALLOW_PUBLIC_REGISTRATION`: set to `true` only when self-service signups are intended. Production defaults to first-user bootstrap only.
     - `AUTH_RATE_LIMIT_REQUESTS`: allowed login/register attempts per client IP window. Defaults to `10`.
     - `AUTH_RATE_LIMIT_WINDOW`: Go duration for the auth attempt window. Defaults to `1m`.
+    - `SSH_KNOWN_HOSTS_PATH`: OpenSSH `known_hosts` file used to verify SSH server keys.
+    - `ALLOW_INSECURE_SSH_HOST_KEYS`: set to `true` only for local development or isolated test environments without host-key verification.
 
 ## 💻 Development Workflow
 
@@ -131,6 +133,7 @@ The bundled PostgreSQL container loads `server/schema.sql` only when its data vo
 - **Encrypted Transport**: Always run behind HTTPS/WSS in production.
 - **Access Control**: API and WebSocket traffic requires a valid JWT-backed Redis session.
 - **Origin Controls**: Configure `ALLOWED_ORIGINS` to match deployed browser origins.
+- **SSH Host Keys**: Production SSH sessions require `SSH_KNOWN_HOSTS_PATH` unless `ALLOW_INSECURE_SSH_HOST_KEYS=true` is explicitly set.
 - **Secret Hygiene**: Never commit real `.env` files, API keys, JWT secrets, or encryption secrets.
 
 ## 📄 License

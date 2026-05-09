@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Clock, Terminal, Calendar } from 'lucide-react';
+import { getSessionDetails, getSessionHistory } from '@/api/sessions';
 
-export function SessionHistory({ connectionId, authToken, open, onOpenChange }) {
+export function SessionHistory({ connectionId, open, onOpenChange }) {
     const [history, setHistory] = useState([]);
     const [selectedSession, setSelectedSession] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -13,19 +14,14 @@ export function SessionHistory({ connectionId, authToken, open, onOpenChange }) 
     const fetchHistory = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/sessions/history?connectionId=${connectionId}`, {
-                headers: { Authorization: `Bearer ${authToken}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setHistory(data);
-            }
+            const data = await getSessionHistory(connectionId);
+            setHistory(data);
         } catch (error) {
             console.error('Failed to fetch history:', error);
         } finally {
             setLoading(false);
         }
-    }, [authToken, connectionId]);
+    }, [connectionId]);
 
     useEffect(() => {
         if (open && connectionId) {
@@ -35,14 +31,9 @@ export function SessionHistory({ connectionId, authToken, open, onOpenChange }) 
 
     const fetchSessionLog = async (sessionId) => {
         try {
-            const res = await fetch(`/api/sessions/history/${sessionId}`, {
-                headers: { Authorization: `Bearer ${authToken}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setLogContent(data.log_content || 'No logs available.');
-                setSelectedSession(sessionId);
-            }
+            const data = await getSessionDetails(sessionId);
+            setLogContent(data.log_content || 'No logs available.');
+            setSelectedSession(sessionId);
         } catch (error) {
             console.error('Failed to fetch session log:', error);
         }

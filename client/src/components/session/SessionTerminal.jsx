@@ -452,7 +452,6 @@ export function SessionTerminal({
                 open={showHistory}
                 onOpenChange={setShowHistory}
                 connectionId={session.connectionId}
-                authToken={authToken}
             />
         </div>
     );

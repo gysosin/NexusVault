@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
+
+const websocketDatabaseTimeout = 3 * time.Second
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -131,7 +134,9 @@ func HandleWebSocket(c *gin.Context) {
 			// If connectionID provided, fetch details
 			if msg.ConnectionID != 0 {
 				var conn models.Connection
-				err := db.DB.Get(&conn, "SELECT id, user_id, name, host, port, username, password, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", msg.ConnectionID, claims.UserID)
+				lookupCtx, cancel := context.WithTimeout(c.Request.Context(), websocketDatabaseTimeout)
+				err := db.DB.GetContext(lookupCtx, &conn, "SELECT id, user_id, name, host, port, username, password, type, created_at, (password IS NOT NULL AND password != '') as has_password FROM connections WHERE id = $1 AND user_id = $2", msg.ConnectionID, claims.UserID)
+				cancel()
 				if err != nil {
 					sendError("Connection not found.")
 					continue
@@ -196,8 +201,10 @@ func HandleWebSocket(c *gin.Context) {
 			currentSessionID = sessionID
 
 			// Record history
-			_, err = db.DB.Exec(`INSERT INTO session_histories (session_id, user_id, connection_id, host, username, start_time, status) VALUES ($1, $2, $3, $4, $5, NOW(), 'active')`,
+			historyCtx, cancel := context.WithTimeout(c.Request.Context(), websocketDatabaseTimeout)
+			_, err = db.DB.ExecContext(historyCtx, `INSERT INTO session_histories (session_id, user_id, connection_id, host, username, start_time, status) VALUES ($1, $2, $3, $4, $5, NOW(), 'active')`,
 				session.ID, session.UserID, session.ConnectionID, session.Host, session.Username)
+			cancel()
 			if err != nil {
 				utils.Log("Failed to record session history:", err)
 			}

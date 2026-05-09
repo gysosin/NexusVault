@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSession } from '../context/SessionContext';
 import * as connectionApi from '../api/connections';
+import * as sessionApi from '../api/sessions';
 
 export const DashboardPage = ({ setView }) => {
     const { sessions, createSession } = useSession();
@@ -18,6 +19,9 @@ export const DashboardPage = ({ setView }) => {
     const [isLoadingConnections, setIsLoadingConnections] = useState(true);
     const [connectionError, setConnectionError] = useState(null);
     const [connectionHealth, setConnectionHealth] = useState({});
+    const [recentSessions, setRecentSessions] = useState([]);
+    const [isLoadingRecentSessions, setIsLoadingRecentSessions] = useState(true);
+    const [recentSessionsError, setRecentSessionsError] = useState(null);
 
     const fetchConnections = useCallback(async () => {
         setIsLoadingConnections(true);
@@ -36,6 +40,24 @@ export const DashboardPage = ({ setView }) => {
     useEffect(() => {
         fetchConnections();
     }, [fetchConnections]);
+
+    const fetchRecentSessions = useCallback(async () => {
+        setIsLoadingRecentSessions(true);
+        setRecentSessionsError(null);
+        try {
+            const data = await sessionApi.getSessionHistory(null, { limit: 5 });
+            setRecentSessions(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch recent sessions', err);
+            setRecentSessionsError(err.message || 'Failed to load recent sessions.');
+        } finally {
+            setIsLoadingRecentSessions(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchRecentSessions();
+    }, [fetchRecentSessions]);
 
     const handleAddConnection = async (newConnection) => {
         try {
@@ -120,6 +142,10 @@ export const DashboardPage = ({ setView }) => {
                 error={connectionError}
                 connectionHealth={connectionHealth}
                 onCheckHealth={handleCheckConnectionHealth}
+                recentSessions={recentSessions}
+                isLoadingRecentSessions={isLoadingRecentSessions}
+                recentSessionsError={recentSessionsError}
+                onRefreshRecentSessions={fetchRecentSessions}
                 activeSession={null}
             />
 

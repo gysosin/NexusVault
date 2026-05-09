@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -14,6 +15,8 @@ import (
 )
 
 const sessionDatabaseTimeout = 3 * time.Second
+const defaultSessionHistoryLimit = 50
+const maxSessionHistoryLimit = 50
 
 func GetActiveSessions(c *gin.Context) {
 	userID, _ := c.Get("userId")
@@ -66,6 +69,12 @@ func GetActiveSessions(c *gin.Context) {
 func GetSessionHistory(c *gin.Context) {
 	userID, _ := c.Get("userId")
 	connectionID := c.Query("connectionId")
+	limit, err := parseSessionHistoryLimit(c.Query("limit"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session history limit"})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), sessionDatabaseTimeout)
 	defer cancel()
 
@@ -84,9 +93,10 @@ func GetSessionHistory(c *gin.Context) {
 		args = append(args, parsedConnectionID)
 	}
 
-	query += ` ORDER BY start_time DESC LIMIT 50`
+	args = append(args, limit)
+	query += fmt.Sprintf(` ORDER BY start_time DESC LIMIT $%d`, len(args))
 
-	err := db.DB.SelectContext(ctx, &history, query, args...)
+	err = db.DB.SelectContext(ctx, &history, query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch session history"})
 		return
@@ -97,6 +107,21 @@ func GetSessionHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, history)
+}
+
+func parseSessionHistoryLimit(raw string) (int, error) {
+	if raw == "" {
+		return defaultSessionHistoryLimit, nil
+	}
+
+	limit, err := strconv.Atoi(raw)
+	if err != nil || limit <= 0 {
+		return 0, fmt.Errorf("limit must be a positive integer")
+	}
+	if limit > maxSessionHistoryLimit {
+		return maxSessionHistoryLimit, nil
+	}
+	return limit, nil
 }
 
 func GetSessionDetails(c *gin.Context) {

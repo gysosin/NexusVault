@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed } from 'lucide-react';
+import { Plus, Terminal, Trash2, Search, Server, Activity, Database, KeyRound, MonitorDot, RefreshCw, Wifi, WifiOff, CircleDashed, History } from 'lucide-react';
 import { AddConnectionDialog } from '../dialogs/AddConnectionDialog';
 import { Badge } from '@/components/ui/badge';
 import { buildDashboardAnalytics } from '@/lib/dashboardAnalytics';
@@ -54,7 +54,21 @@ const getHealthStatus = (health) => {
     return health.status;
 };
 
-export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = [], isLoading = false, error = null, connectionHealth = {}, onCheckHealth }) {
+export function Dashboard({
+    connections,
+    onConnect,
+    onDelete,
+    onAdd,
+    sessions = [],
+    isLoading = false,
+    error = null,
+    connectionHealth = {},
+    onCheckHealth,
+    recentSessions = [],
+    isLoadingRecentSessions = false,
+    recentSessionsError = null,
+    onRefreshRecentSessions,
+}) {
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
 
@@ -90,6 +104,13 @@ export function Dashboard({ connections, onConnect, onDelete, onAdd, sessions = 
             <DashboardAnalytics analytics={analytics} isLoading={isLoading} />
 
             <ConnectionHealthSnapshot summary={healthSummary} isLoading={isLoading} />
+
+            <RecentSessionTimeline
+                sessions={recentSessions}
+                isLoading={isLoadingRecentSessions}
+                error={recentSessionsError}
+                onRefresh={onRefreshRecentSessions}
+            />
 
             {error && (
                 <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -217,6 +238,111 @@ function HealthSummaryPill({ label, value, tone, isLoading }) {
             )}
         </div>
     );
+}
+
+function RecentSessionTimeline({ sessions, isLoading, error, onRefresh }) {
+    return (
+        <Card className="border-white/10 bg-[#0b1220]/60">
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                        <History className="h-4 w-4 text-primary" />
+                        Recent session timeline
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-sm text-gray-400">
+                        Last five terminal sessions across saved SSH/RDP targets.
+                    </CardDescription>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-fit border-white/10 bg-white/[0.04] text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                </Button>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                        {error}
+                    </div>
+                )}
+                {!error && isLoading && <RecentSessionSkeleton />}
+                {!error && !isLoading && sessions.length === 0 && (
+                    <div className="rounded-md border border-dashed border-white/10 bg-white/[0.03] px-4 py-6 text-sm text-gray-400">
+                        No recent sessions yet. Launch a connection to start building the timeline.
+                    </div>
+                )}
+                {!error && !isLoading && sessions.length > 0 && (
+                    <div className="space-y-3">
+                        {sessions.map((session) => (
+                            <RecentSessionItem key={session.sessionId || session.session_id || session.id} session={session} />
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function RecentSessionSkeleton() {
+    return (
+        <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <div className="h-4 w-2/5 animate-pulse rounded bg-white/10" />
+                    <div className="mt-3 h-3 w-3/5 animate-pulse rounded bg-white/10" />
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function RecentSessionItem({ session }) {
+    const startedAt = session.startTime || session.start_time;
+    const endedAt = session.endTime || session.end_time;
+    const status = session.status || 'unknown';
+    const statusClassName = status === 'active'
+        ? 'border-green-500/30 bg-green-500/10 text-green-300'
+        : 'border-white/10 bg-white/[0.04] text-gray-300';
+
+    return (
+        <div className="flex flex-col gap-3 rounded-md border border-white/10 bg-white/[0.03] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-100">
+                    {session.username}@{session.host}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                    {formatSessionTimestamp(startedAt)}
+                    {endedAt ? ` - ${formatSessionTimestamp(endedAt)}` : ' - Still active'}
+                </p>
+            </div>
+            <Badge variant="outline" className={`w-fit ${statusClassName}`}>
+                {status}
+            </Badge>
+        </div>
+    );
+}
+
+function formatSessionTimestamp(value) {
+    if (!value) {
+        return 'Unknown time';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return 'Unknown time';
+    }
+
+    return parsed.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 function ConnectionGridSkeleton() {

@@ -17,12 +17,18 @@ const PERMISSIONS = [
     { id: 'share_connections', label: 'Share Connections' },
     { id: 'view_audit', label: 'View Audit Logs' },
 ];
+const ROLE_ID_PATTERN = /^[a-z][a-z0-9_]{0,49}$/;
+
+const roleIdFromName = (name) => name.trim().toLowerCase().replace(/\s+/g, '_');
 
 export function RoleManagement() {
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
     const [newRole, setNewRole] = useState({ name: '', description: '', permissions: [] });
+    const [createRoleError, setCreateRoleError] = useState('');
+    const pendingRoleId = roleIdFromName(newRole.name);
+    const canCreateRole = Boolean(newRole.name.trim() && ROLE_ID_PATTERN.test(pendingRoleId));
 
     useEffect(() => {
         fetchRoles();
@@ -40,17 +46,20 @@ export function RoleManagement() {
     };
 
     const handleAddRole = async () => {
+        if (!canCreateRole) return;
+        setCreateRoleError('');
+
         try {
-            const id = newRole.name.toLowerCase().replace(/\s+/g, '_');
             await requestJson('/api/admin/roles', {
                 method: 'POST',
-                body: { ...newRole, id }
+                body: { ...newRole, id: pendingRoleId }
             });
             fetchRoles();
             setIsAddRoleOpen(false);
             setNewRole({ name: '', description: '', permissions: [] });
         } catch (err) {
             console.error('Failed to create role', err);
+            setCreateRoleError(err.message || 'Failed to create role.');
         }
     };
 
@@ -128,7 +137,13 @@ export function RoleManagement() {
                 </Table>
             </div>
 
-            <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>
+            <Dialog
+                open={isAddRoleOpen}
+                onOpenChange={(open) => {
+                    setIsAddRoleOpen(open);
+                    if (!open) setCreateRoleError('');
+                }}
+            >
                 <DialogContent className="bg-[#1a1f2e] border-white/10 text-white">
                     <DialogHeader>
                         <DialogTitle>Create New Role</DialogTitle>
@@ -138,10 +153,17 @@ export function RoleManagement() {
                             <Label>Role Name</Label>
                             <Input
                                 value={newRole.name}
-                                onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
+                                onChange={(e) => {
+                                    setCreateRoleError('');
+                                    setNewRole({ ...newRole, name: e.target.value });
+                                }}
                                 className="bg-black/20 border-white/10"
                                 placeholder="e.g. Editor"
+                                aria-describedby="role-id-help"
                             />
+                            <p id="role-id-help" className="text-xs text-gray-400">
+                                ID: {pendingRoleId || 'role_name'}
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Description</Label>
@@ -173,12 +195,17 @@ export function RoleManagement() {
                                 ))}
                             </div>
                         </div>
+                        {createRoleError && (
+                            <p className="rounded border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                {createRoleError}
+                            </p>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsAddRoleOpen(false)} className="border-white/10 hover:bg-white/5 text-gray-300">
                             Cancel
                         </Button>
-                        <Button onClick={handleAddRole} className="bg-brand-primary hover:bg-brand-primary/90">
+                        <Button onClick={handleAddRole} disabled={!canCreateRole} className="bg-brand-primary hover:bg-brand-primary/90">
                             Create Role
                         </Button>
                     </DialogFooter>

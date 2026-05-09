@@ -12,38 +12,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"go-server/internal/db"
 	"go-server/internal/utils"
 )
 
 const sessionStoreTimeout = 2 * time.Second
 const maxEncryptedPayloadBytes = 1 << 20
-
-func DecryptPayload() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var body map[string]interface{}
-		if err := c.ShouldBindBodyWith(&body, binding.JSON); err == nil {
-			if payload, ok := body["payload"].(string); ok {
-				decrypted, err := utils.DecryptPayload(payload)
-				if err != nil {
-					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt payload."})
-					return
-				}
-
-				// Replace body with decrypted JSON
-				c.Request.Body = io.NopCloser(strings.NewReader(decrypted))
-				c.Request.ContentLength = int64(len(decrypted))
-				c.Request.Header.Set("Content-Type", "application/json")
-			}
-		}
-		c.Next()
-	}
-}
-
-// Note: Gin's ShouldBindBodyWith requires a custom binding or reading body manually.
-// A better approach for DecryptPayload in Gin:
-// Read body, check if it has "payload", decrypt, set body back.
 
 func DecryptPayloadMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

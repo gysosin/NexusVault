@@ -5,12 +5,8 @@ trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 
 echo "Starting NexusVault Development Environment..."
 
-# Start Infrastructure (Postgres & Redis)
-echo "Starting Database and Redis..."
-docker-compose -f docker-compose.dev.yml up -d
-
-# Wait for DB to be ready (optional check, but good practice)
-# sleep 2
+# Infrastructure (Postgres & Redis) is managed by ~/code/Infra
+# Make sure it's running: cd ~/code/Infra && docker compose up -d
 
 # Start Go Server
 echo "Starting Go Server..."

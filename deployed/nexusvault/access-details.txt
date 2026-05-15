@@ -1,0 +1,22 @@
+NexusVault local Docker deployment
+
+URL: http://localhost:3000
+Health check: http://localhost:3000/api/ready
+Verified: 2026-05-09T17:03:50+05:30
+
+Application login:
+Username: admin
+Email: admin@nexusvault.local
+Password: q18xb7gCfzfL1n3lWnh8
+
+Docker project:
+Name: nexusvault-local
+Folder: deployed/nexusvault
+Compose file: deployed/nexusvault/docker-compose.yml
+Env file: deployed/nexusvault/nexusvault.env
+
+Useful commands:
+Start: docker compose --project-name nexusvault-local --env-file deployed/nexusvault/nexusvault.env -f deployed/nexusvault/docker-compose.yml up -d --build
+Status: docker compose --project-name nexusvault-local --env-file deployed/nexusvault/nexusvault.env -f deployed/nexusvault/docker-compose.yml ps
+Logs: docker compose --project-name nexusvault-local --env-file deployed/nexusvault/nexusvault.env -f deployed/nexusvault/docker-compose.yml logs -f web
+Stop: docker compose --project-name nexusvault-local --env-file deployed/nexusvault/nexusvault.env -f deployed/nexusvault/docker-compose.yml down

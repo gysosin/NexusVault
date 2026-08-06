@@ -187,6 +187,7 @@ func HandleWebSocket(c *gin.Context) {
 				LastActivity:   time.Now(),
 				RestoreHistory: msg.RestoreHistory,
 				Sockets:        make(map[*service.SafeConn]bool),
+				Buffer:         service.NewSafeBuffer(),
 			}
 
 			// Set type based on protocol hint
@@ -267,11 +268,9 @@ func HandleWebSocket(c *gin.Context) {
 
 			// Replay buffer
 			if session.RestoreHistory {
-				session.BufferMutex.Lock()
-				if session.Buffer != "" {
-					sendJSON(gin.H{"type": "data", "data": session.Buffer})
+				if session.Buffer != nil && session.Buffer.Len() > 0 {
+					sendJSON(gin.H{"type": "data", "data": session.Buffer.String()})
 				}
-				session.BufferMutex.Unlock()
 			}
 
 		case "input", "data":

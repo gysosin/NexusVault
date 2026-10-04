@@ -4,3 +4,6 @@ node_modules
 output.log
 server_bin
 server/server
+deployed/nexusvault/nexusvault.env
+deployed/nexusvault/access-details.txt
+cookies.txt
